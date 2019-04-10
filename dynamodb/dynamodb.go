@@ -22,7 +22,7 @@ func NewClient(cfg *goaws.Config, options ...func(*dynamodb.DynamoDB)) *Client {
 	return &Client{db: db}
 }
 
-func WithEndpoint(endpoint string) func(*dynamodb.DynamoDB) {
+func Endpoint(endpoint string) func(*dynamodb.DynamoDB) {
 	return func(db *dynamodb.DynamoDB) {
 		db.Endpoint = endpoint
 	}

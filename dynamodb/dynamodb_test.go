@@ -191,7 +191,7 @@ func TestMain(m *testing.M) {
 			return err
 		}
 
-		cli = NewClient(config, WithEndpoint("http://localhost:"+resource.GetPort("8000/tcp")))
+		cli = NewClient(config, Endpoint("http://localhost:"+resource.GetPort("8000/tcp")))
 
 		tableDef := getTableDefinition(tableName)
 		_, err = cli.db.CreateTable(&tableDef)
