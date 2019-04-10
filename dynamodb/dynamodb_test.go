@@ -1,6 +1,11 @@
 package dynamodb
 
 import (
+	"log"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -8,12 +13,8 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
-	"github.com/ryanair/go-aws"
+	goaws "github.com/ryanair/go-aws"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"os"
-	"testing"
-	"time"
 )
 
 var cli *Client
@@ -62,7 +63,8 @@ func TestDynamoDBClient_Put_validationException(t *testing.T) {
 	}
 
 	assert.True(t, isValidationFailed(putErr))
-	containsErr(t, putErr, errors.New("put item failed: ValidationException: Supplied AttributeValue is empty, must contain exactly one of the supported datatypes"))
+	containsErr(t, putErr, errors.New("put item failed: ValidationException: "+
+		"Supplied AttributeValue is empty, must contain exactly one of the supported datatypes"))
 }
 
 func TestDynamoDBClient_PutWithCondition_ok(t *testing.T) {

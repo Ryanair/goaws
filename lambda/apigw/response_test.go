@@ -3,7 +3,8 @@ package apigw_test
 import (
 	"testing"
 
-	"github.com/Ryanair/go-aws/lambda/apigw"
+	"github.com/ryanair/go-aws/lambda/apigw"
+
 	"github.com/stretchr/testify/assert"
 )
 

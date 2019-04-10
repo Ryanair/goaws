@@ -1,11 +1,12 @@
 package goaws
 
 import (
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
-	"os"
 )
 
 type Config struct {
