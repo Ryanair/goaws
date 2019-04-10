@@ -1,4 +1,4 @@
-# go-aws
+# goaws
 
 [![Build Status](https://travis-ci.com/Ryanair/go-aws.svg?branch=master)](https://travis-ci.com/Ryanair/go-aws)
 

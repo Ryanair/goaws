@@ -1,4 +1,4 @@
-module github.com/Ryanair/go-aws
+module github.com/ryanair/goaws
 
 require (
 	github.com/aws/aws-lambda-go v1.10.0
