@@ -34,7 +34,7 @@ func newConfig(options ...func(*aws.Config)) (*Config, error) {
 		if regionEnvVar == "" {
 			return &Config{}, errors.New("AWS_REGION environment variable not found")
 		}
-		WithRegion(regionEnvVar)(awsConfig)
+		Region(regionEnvVar)(awsConfig)
 	}
 
 	sess, err := session.NewSession(awsConfig)
@@ -45,19 +45,19 @@ func newConfig(options ...func(*aws.Config)) (*Config, error) {
 	return &Config{Provider: sess}, nil
 }
 
-func WithRegion(region string) func(*aws.Config) {
+func Region(region string) func(*aws.Config) {
 	return func(c *aws.Config) {
 		c.Region = aws.String(region)
 	}
 }
 
-func WithMaxRetries(max int) func(*aws.Config) {
+func MaxRetries(max int) func(*aws.Config) {
 	return func(c *aws.Config) {
 		c.MaxRetries = aws.Int(max)
 	}
 }
 
-func WithCredentials(id, secret, token string) func(*aws.Config) {
+func Credentials(id, secret, token string) func(*aws.Config) {
 	return func(c *aws.Config) {
 		c.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
 	}
