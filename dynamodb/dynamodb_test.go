@@ -183,7 +183,9 @@ func TestMain(m *testing.M) {
 	}
 
 	if err := pool.Retry(func() error {
-		config, err := goaws.NewConfig(goaws.WithRegion(endpoints.EuWest1RegionID))
+		config, err := goaws.NewConfig(
+			goaws.WithRegion(endpoints.EuWest1RegionID),
+			goaws.WithCredentials("secret_id", "secret_key", "random_token"))
 		if err != nil {
 			log.Printf("Couldn't create config: %s", err)
 			return err

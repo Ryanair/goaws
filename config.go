@@ -3,6 +3,8 @@ package goaws
 import (
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -52,5 +54,11 @@ func WithRegion(region string) func(*aws.Config) {
 func WithMaxRetries(max int) func(*aws.Config) {
 	return func(c *aws.Config) {
 		c.MaxRetries = aws.Int(max)
+	}
+}
+
+func WithCredentials(id, secret, token string) func(*aws.Config) {
+	return func(c *aws.Config) {
+		c.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
 	}
 }
