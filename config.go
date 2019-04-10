@@ -30,9 +30,8 @@ func newConfig(options ...func(*aws.Config)) (*Config, error) {
 		regionEnvVar := os.Getenv("AWS_REGION")
 		if regionEnvVar == "" {
 			return &Config{}, errors.New("AWS_REGION environment variable not found")
-		} else {
-			WithRegion(regionEnvVar)(awsConfig)
 		}
+		WithRegion(regionEnvVar)(awsConfig)
 	}
 
 	sess, err := session.NewSession(awsConfig)
