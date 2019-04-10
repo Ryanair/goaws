@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ryanair/goaws"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -13,7 +15,6 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
-	goaws "github.com/ryanair/go-aws"
 	"github.com/stretchr/testify/assert"
 )
 

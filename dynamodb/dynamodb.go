@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/pkg/errors"
-	"github.com/ryanair/go-aws"
+	"github.com/ryanair/goaws"
 )
 
 type Client struct {
