@@ -23,7 +23,7 @@ linters-settings:
   lll:
     line-length: 160
   goimports:
-    local-prefixes: stash.ryanair.com/marketplace/partner
+    local-prefixes: github.com/ryanair/goaws
   gocritic:
     enabled-tags:
       - performance
