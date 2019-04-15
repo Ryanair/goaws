@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ryanair/goaws/lambda/apigw"
+	"github.com/Ryanair/goaws/lambda/apigw"
 
 	"github.com/stretchr/testify/assert"
 )
