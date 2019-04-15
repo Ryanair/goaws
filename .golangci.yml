@@ -23,7 +23,7 @@ linters-settings:
   lll:
     line-length: 160
   goimports:
-    local-prefixes: github.com/ryanair/goaws
+    local-prefixes: github.com/Ryanair/goaws
   gocritic:
     enabled-tags:
       - performance

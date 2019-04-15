@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryanair/goaws"
+	"github.com/Ryanair/goaws"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"

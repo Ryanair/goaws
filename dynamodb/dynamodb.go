@@ -1,12 +1,12 @@
 package dynamodb
 
 import (
+	"github.com/Ryanair/goaws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/pkg/errors"
-	"github.com/ryanair/goaws"
 )
 
 type Client struct {
