@@ -1,3 +1,5 @@
+// +build local
+
 package s3
 
 import (

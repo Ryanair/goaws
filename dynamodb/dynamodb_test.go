@@ -1,4 +1,4 @@
-// +build ci
+// +build local ci
 
 package dynamodb
 
