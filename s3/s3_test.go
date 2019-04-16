@@ -49,22 +49,6 @@ func TestClient_GeneratePutURL_signingFailed(t *testing.T) {
 	assert.True(t, isSigningFailed(genErr))
 }
 
-func TestClient_DeleteObject_bucketNotFound(t *testing.T) {
-	// when
-	delErr := cli.DeleteObject(bucketID, "some_random_key")
-
-	// then
-	isBucketNotFound := func(err error) bool {
-		type bucketNotFound interface {
-			BucketNotFound() bool
-		}
-		e, ok := err.(bucketNotFound)
-		return ok && e.BucketNotFound()
-	}
-
-	assert.True(t, isBucketNotFound(delErr))
-}
-
 func TestClient_GetObject_keyNotFound(t *testing.T) {
 	// given & when
 	_, getErr := cli.GetObject(bucketID, "some_random_key")
@@ -82,6 +66,14 @@ func TestClient_GetObject_keyNotFound(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
+	setupS3()
+	code := m.Run()
+	teardownS3()
+
+	os.Exit(code)
+}
+
+func setupS3() {
 	config, err := goaws.NewConfig(goaws.Region(endpoints.EuWest1RegionID))
 	if err != nil {
 		log.Fatalf("couldn't create config: %s", err)
@@ -94,18 +86,16 @@ func TestMain(m *testing.M) {
 		Bucket: aws.String(bucketID),
 	}); err != nil {
 		if err == credentials.ErrNoValidProvidersFoundInChain {
-			log.Fatalf("Skipping S3 tests. Only for local testing when AWS credentials are provided.")
+			log.Fatalf("Test failed due to lack of AWS credentials in chain.")
 		}
 		log.Fatalf("couldn't create bucket: %s", err)
 	}
+}
 
-	code := m.Run()
-
+func teardownS3() {
 	if _, err := cli.s3.DeleteBucket(&s3.DeleteBucketInput{
 		Bucket: aws.String(bucketID),
 	}); err != nil {
 		log.Fatalf("couldn't delete bucket: %s", err)
 	}
-
-	os.Exit(code)
 }

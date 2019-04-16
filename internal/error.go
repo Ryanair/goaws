@@ -14,22 +14,22 @@ type Error struct {
 	Code    string
 }
 
-func newError(message, code string) Error {
+func NewError(message, code string) Error {
 	return Error{Message: message, Code: code}
 }
 
 func WrapOpsErr(err error, msg string) Error {
 	wrappedErrMsg := errors.Wrap(err, msg).Error()
 	if awsErr, ok := err.(awserr.Error); ok {
-		return newError(wrappedErrMsg, awsErr.Code())
+		return NewError(wrappedErrMsg, awsErr.Code())
 	}
 
-	return newError(wrappedErrMsg, UnknownOpsErrCode)
+	return NewError(wrappedErrMsg, UnknownOpsErrCode)
 }
 
 func WrapErr(err error, code, msg string) Error {
 	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	return newError(wrappedErrMsg, code)
+	return NewError(wrappedErrMsg, code)
 }
 
 func AnyEquals(origCode string, errCodes ...string) bool {
