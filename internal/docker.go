@@ -26,9 +26,6 @@ func DockerSetup(m *testing.M, img DockerImage, setup func(*dockertest.Resource)
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	pubPort := resource.GetPort("9191/tcp")
-	log.Printf("published port: %s", pubPort)
-
 	if err := pool.Retry(func() error {
 		if err := setup(resource); err != nil {
 			log.Fatalf("Could not setup: %s", err)

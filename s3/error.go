@@ -2,6 +2,7 @@ package s3
 
 import (
 	"github.com/Ryanair/goaws/internal"
+
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 

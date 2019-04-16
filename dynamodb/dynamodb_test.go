@@ -5,6 +5,7 @@ import (
 
 	"github.com/Ryanair/goaws"
 	"github.com/Ryanair/goaws/internal"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"

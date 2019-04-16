@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Ryanair/goaws/lambda/apigw"
+
 	"github.com/stretchr/testify/assert"
 )
 
