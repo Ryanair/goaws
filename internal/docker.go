@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ory/dockertest"
+	"github.com/pkg/errors"
 )
 
 type DockerImage struct {
@@ -28,7 +29,7 @@ func DockerSetup(m *testing.M, img DockerImage, setup func(*dockertest.Resource)
 
 	if err := pool.Retry(func() error {
 		if err := setup(resource); err != nil {
-			log.Fatalf("Could not setup: %s", err)
+			return errors.Wrap(err, "Could not setup resource")
 		}
 		time.Sleep(100 * time.Millisecond)
 
