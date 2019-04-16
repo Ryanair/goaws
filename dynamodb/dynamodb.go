@@ -1,7 +1,6 @@
 package dynamodb
 
 import (
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -31,7 +30,7 @@ func WithEndpoint(endpoint string) func(*dynamodb.DynamoDB) {
 func (c *Client) Put(item interface{}, tableName string) error {
 	av, err := marshalItem(item)
 	if err != nil {
-		return wrapErr(err, MarshalErrCode, "put item marshal failed")
+		return newErr(err, MarshalErrCode, "put item marshal failed")
 	}
 
 	input := dynamodb.PutItemInput{
@@ -39,7 +38,7 @@ func (c *Client) Put(item interface{}, tableName string) error {
 		TableName: &tableName,
 	}
 	if _, err := c.db.PutItem(&input); err != nil {
-		return wrapOpsErr(err, "put item failed")
+		return newOpsErr(err, "put item failed")
 	}
 
 	return nil
@@ -48,12 +47,12 @@ func (c *Client) Put(item interface{}, tableName string) error {
 func (c *Client) PutWithCondition(item interface{}, conditionBuilder expression.ConditionBuilder, tableName string) error {
 	exp, err := expression.NewBuilder().WithCondition(conditionBuilder).Build()
 	if err != nil {
-		return wrapErr(err, InvalidConditionErrCode, "invalid put condition")
+		return newErr(err, InvalidConditionErrCode, "invalid put condition")
 	}
 
 	av, err := marshalItem(item)
 	if err != nil {
-		return wrapErr(err, MarshalErrCode, "marshal put item with condition failed")
+		return newErr(err, MarshalErrCode, "marshal put item with condition failed")
 	}
 
 	input := dynamodb.PutItemInput{
@@ -64,7 +63,7 @@ func (c *Client) PutWithCondition(item interface{}, conditionBuilder expression.
 		TableName:                 &tableName,
 	}
 	if _, err := c.db.PutItem(&input); err != nil {
-		return wrapOpsErr(err, "put item with condition failed")
+		return newOpsErr(err, "put item with condition failed")
 	}
 
 	return nil
@@ -96,7 +95,7 @@ func NewPartitionAndSortKey(partitionName, partitionValue, sortName, sortValue s
 func (c *Client) Get(key Key, consistentRead bool, tableName string, out interface{}) (bool, error) {
 	dbKey, err := marshalKey(key)
 	if err != nil {
-		return false, wrapErr(err, MarshalErrCode, "marshal key failed")
+		return false, newErr(err, MarshalErrCode, "marshal key failed")
 	}
 
 	input := dynamodb.GetItemInput{
@@ -106,11 +105,11 @@ func (c *Client) Get(key Key, consistentRead bool, tableName string, out interfa
 	}
 	output, getErr := c.db.GetItem(&input)
 	if getErr != nil {
-		return false, wrapOpsErr(err, "get item failed")
+		return false, newOpsErr(err, "get item failed")
 	}
 
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(output.Item, &out); unmarshalErr != nil {
-		return false, wrapErr(unmarshalErr, UnmarshalErrCode, "unmarshal GetOutput failed")
+		return false, newErr(unmarshalErr, UnmarshalErrCode, "unmarshal GetOutput failed")
 	}
 
 	if len(output.Item) == 0 {
@@ -146,18 +145,4 @@ func marshalKey(key Key) (map[string]*dynamodb.AttributeValue, error) {
 	}
 
 	return keys, nil
-}
-
-func wrapOpsErr(err error, msg string) error {
-	wrappedErr := errors.Wrap(err, msg)
-	if awsErr, ok := err.(awserr.Error); ok {
-		return NewError(wrappedErr.Error(), awsErr.Code())
-	}
-
-	return wrappedErr
-}
-
-func wrapErr(err error, code, msg string) error {
-	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	return NewError(wrappedErrMsg, code)
 }

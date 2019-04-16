@@ -1,13 +1,6 @@
 package dynamodb
 
 import (
-	"log"
-	"os"
-	"testing"
-	"time"
-
-	"github.com/ryanair/goaws"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -15,7 +8,10 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
+	"github.com/ryanair/goaws"
+	"github.com/ryanair/goaws/internal"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 var cli *Client
@@ -172,23 +168,18 @@ func containsErr(t *testing.T, origErr, want error) bool {
 }
 
 func TestMain(m *testing.M) {
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+	img := internal.DockerImage{
+		Repo: "amazon/dynamodb-local",
+		Tag:  "latest",
+		Env:  nil,
 	}
 
-	resource, err := pool.Run("amazon/dynamodb-local", "latest", nil)
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
-	}
-
-	if err := pool.Retry(func() error {
+	setup := func(resource *dockertest.Resource) error {
 		config, err := goaws.NewConfig(
 			goaws.Region(endpoints.EuWest1RegionID),
 			goaws.Credentials("secret_id", "secret_key", "random_token"))
 		if err != nil {
-			log.Printf("Couldn't create config: %s", err)
-			return err
+			return errors.Wrap(err, "couldn't create config")
 		}
 
 		cli = NewClient(config, WithEndpoint("http://localhost:"+resource.GetPort("8000/tcp")))
@@ -196,22 +187,11 @@ func TestMain(m *testing.M) {
 		tableDef := getTableDefinition(tableName)
 		_, err = cli.db.CreateTable(&tableDef)
 		if err != nil {
-			log.Printf("Could not create table: %s", err)
-			return err
+			return errors.Wrap(err, "could not create table")
 		}
 
-		time.Sleep(100 * time.Millisecond)
-
 		return nil
-	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
 	}
 
-	code := m.Run()
-
-	if err := pool.Purge(resource); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-
-	os.Exit(code)
+	internal.DockerSetup(m, img, setup, )
 }

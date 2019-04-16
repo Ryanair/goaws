@@ -1,6 +1,9 @@
 package dynamodb
 
-import "github.com/aws/aws-sdk-go/service/dynamodb"
+import (
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/ryanair/goaws/internal"
+)
 
 const (
 	MarshalErrCode            = "DynamoDBMarshalErr"
@@ -11,51 +14,52 @@ const (
 	UnrecognizedClientErrCode = "UnrecognizedClientException"
 )
 
-type Error struct {
-	Message string
-	Code    string
-}
-
-func NewError(message, code string) Error {
-	return Error{Message: message, Code: code}
-}
+type Error internal.Error
 
 func (e Error) Error() string {
 	return e.Message
 }
 
+func newErr(err error, code, msg string) error {
+	return Error(internal.WrapErr(err, code, msg))
+}
+
+func newOpsErr(err error, msg string) error {
+	return Error(internal.WrapOpsErr(err, msg))
+}
+
 func (e Error) MarshallingFailed() bool {
-	return anyEquals(e.Code, MarshalErrCode)
+	return internal.AnyEquals(e.Code, MarshalErrCode)
 }
 
 func (e Error) UnmarshallingFailed() bool {
-	return anyEquals(e.Code, UnmarshalErrCode)
+	return internal.AnyEquals(e.Code, UnmarshalErrCode)
 }
 
 func (e Error) InvalidCondition() bool {
-	return anyEquals(e.Code, InvalidConditionErrCode)
+	return internal.AnyEquals(e.Code, InvalidConditionErrCode)
 }
 
 func (e Error) ValidationFailed() bool {
-	return anyEquals(e.Code, ValidationErrCode)
+	return internal.AnyEquals(e.Code, ValidationErrCode)
 }
 
 func (e Error) ConditionFailed() bool {
-	return anyEquals(e.Code, dynamodb.ErrCodeConditionalCheckFailedException)
+	return internal.AnyEquals(e.Code, dynamodb.ErrCodeConditionalCheckFailedException)
 }
 
 func (e Error) BackupUnavailable() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeContinuousBackupsUnavailableException,
 		dynamodb.ErrCodePointInTimeRecoveryUnavailableException)
 }
 
 func (e Error) InternalError() bool {
-	return anyEquals(e.Code, dynamodb.ErrCodeInternalServerError)
+	return internal.AnyEquals(e.Code, dynamodb.ErrCodeInternalServerError)
 }
 
 func (e Error) ResourceNotFound() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeResourceNotFoundException,
 		dynamodb.ErrCodeBackupNotFoundException,
 		dynamodb.ErrCodeGlobalTableNotFoundException,
@@ -65,14 +69,14 @@ func (e Error) ResourceNotFound() bool {
 }
 
 func (e Error) ResourceAlreadyExists() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeGlobalTableAlreadyExistsException,
 		dynamodb.ErrCodeReplicaAlreadyExistsException,
 		dynamodb.ErrCodeTableAlreadyExistsException)
 }
 
 func (e Error) InvalidOperation() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeIdempotentParameterMismatchException,
 		dynamodb.ErrCodeInvalidRestoreTimeException,
 		dynamodb.ErrCodeTransactionCanceledException,
@@ -81,7 +85,7 @@ func (e Error) InvalidOperation() bool {
 }
 
 func (e Error) LimitExceeded() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeItemCollectionSizeLimitExceededException,
 		dynamodb.ErrCodeLimitExceededException,
 		dynamodb.ErrCodeRequestLimitExceeded,
@@ -89,7 +93,7 @@ func (e Error) LimitExceeded() bool {
 }
 
 func (e Error) ResourceInUse() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		dynamodb.ErrCodeBackupInUseException,
 		dynamodb.ErrCodeResourceInUseException,
 		dynamodb.ErrCodeTableInUseException)
@@ -97,7 +101,7 @@ func (e Error) ResourceInUse() bool {
 
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Programming.Errors.html
 func (e Error) Retryable() bool {
-	return anyEquals(e.Code,
+	return internal.AnyEquals(e.Code,
 		ThrottlingErrCode,
 		UnrecognizedClientErrCode,
 		dynamodb.ErrCodeItemCollectionSizeLimitExceededException,
@@ -105,14 +109,4 @@ func (e Error) Retryable() bool {
 		dynamodb.ErrCodeProvisionedThroughputExceededException,
 		dynamodb.ErrCodeRequestLimitExceeded,
 		dynamodb.ErrCodeInternalServerError)
-}
-
-func anyEquals(origCode string, errCodes ...string) bool {
-	for _, ec := range errCodes {
-		if origCode == ec {
-			return true
-		}
-	}
-
-	return false
 }
