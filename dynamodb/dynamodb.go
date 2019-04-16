@@ -1,11 +1,11 @@
 package dynamodb
 
 import (
+	"github.com/Ryanair/goaws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/pkg/errors"
-	"github.com/ryanair/goaws"
 )
 
 type Client struct {
@@ -21,7 +21,7 @@ func NewClient(cfg *goaws.Config, options ...func(*dynamodb.DynamoDB)) *Client {
 	return &Client{db: db}
 }
 
-func WithEndpoint(endpoint string) func(*dynamodb.DynamoDB) {
+func Endpoint(endpoint string) func(*dynamodb.DynamoDB) {
 	return func(db *dynamodb.DynamoDB) {
 		db.Endpoint = endpoint
 	}

@@ -1,8 +1,8 @@
 package dynamodb
 
 import (
+	"github.com/Ryanair/goaws/internal"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/ryanair/goaws/internal"
 )
 
 const (

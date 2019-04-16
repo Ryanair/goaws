@@ -1,11 +1,12 @@
 package internal
 
 import (
-	"github.com/ory/dockertest"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/ory/dockertest"
 )
 
 type DockerImage struct {

@@ -1,12 +1,13 @@
 package s3
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
 	"io"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+
+	"github.com/Ryanair/goaws"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/ryanair/goaws"
 )
 
 type Client struct {
@@ -65,4 +66,3 @@ func (c *Client) GetObject(bucket, key string) (io.ReadCloser, error) {
 
 	return out.Body, nil
 }
-

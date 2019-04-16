@@ -1,17 +1,18 @@
 package s3
 
 import (
+	"log"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/Ryanair/goaws"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/rs/xid"
-	"github.com/ryanair/goaws"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"os"
-	"testing"
-	"time"
 )
 
 var (

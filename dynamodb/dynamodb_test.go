@@ -1,6 +1,10 @@
 package dynamodb
 
 import (
+	"testing"
+
+	"github.com/Ryanair/goaws"
+	"github.com/Ryanair/goaws/internal"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -8,10 +12,7 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
-	"github.com/ryanair/goaws"
-	"github.com/ryanair/goaws/internal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var cli *Client
@@ -182,7 +183,7 @@ func TestMain(m *testing.M) {
 			return errors.Wrap(err, "couldn't create config")
 		}
 
-		cli = NewClient(config, WithEndpoint("http://localhost:"+resource.GetPort("8000/tcp")))
+		cli = NewClient(config, Endpoint("http://localhost:"+resource.GetPort("8000/tcp")))
 
 		tableDef := getTableDefinition(tableName)
 		_, err = cli.db.CreateTable(&tableDef)
@@ -193,5 +194,5 @@ func TestMain(m *testing.M) {
 		return nil
 	}
 
-	internal.DockerSetup(m, img, setup, )
+	internal.DockerSetup(m, img, setup)
 }
