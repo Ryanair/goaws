@@ -71,6 +71,6 @@ func Endpoint(endpoint string) func(*aws.Config) {
 
 func Debug() func(*aws.Config) {
 	return func(c *aws.Config) {
-		c.WithLogLevel(aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
+		c.WithLogLevel(aws.LogDebugWithRequestRetries).WithLogLevel(aws.LogDebugWithRequestErrors)
 	}
 }
