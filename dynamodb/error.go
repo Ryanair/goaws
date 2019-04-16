@@ -21,11 +21,11 @@ func (e Error) Error() string {
 	return e.Message
 }
 
-func newErr(err error, code, msg string) error {
+func wrapErr(err error, code, msg string) error {
 	return Error(internal.WrapErr(err, code, msg))
 }
 
-func newOpsErr(err error, msg string) error {
+func wrapOpsErr(err error, msg string) error {
 	return Error(internal.WrapOpsErr(err, msg))
 }
 
