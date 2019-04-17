@@ -55,36 +55,22 @@ type GetUserResult struct {
 }
 
 type Adapter struct {
-	poolID         string
-	clientID       string
-	clientSecret   string
-	createAlias    bool
-	provider       *cognitoidentityprovider.CognitoIdentityProvider
-	deliveryMedium deliveryMedium
+	poolID       string
+	clientID     string
+	clientSecret string
+	provider     *cognitoidentityprovider.CognitoIdentityProvider
 }
 
-func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string, deliveryMedium deliveryMedium, options ...func(*Adapter) *Adapter) *Adapter {
+func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapter {
 
 	provider := cognitoidentityprovider.New(cfg.Provider)
 
-	adapter := &Adapter{
-		poolID:         poolID,
-		clientID:       clientID,
-		clientSecret:   clientSecret,
-		provider:       provider,
-		deliveryMedium: deliveryMedium,
+	return &Adapter{
+		poolID:       poolID,
+		clientID:     clientID,
+		clientSecret: clientSecret,
+		provider:     provider,
 	}
-
-	for _, opt := range options {
-		adapter = opt(adapter)
-	}
-
-	return adapter
-}
-
-func ForceAliasCreation(adapter *Adapter) *Adapter {
-	adapter.createAlias = true
-	return adapter
 }
 
 func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) error {
@@ -122,15 +108,16 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 	return result, nil
 }
 
-func (ca *Adapter) CreateUser(username, password string, attributesMap map[string]string) (*CreateUserResult, error) {
+func (ca *Adapter) CreateUser(username, password string, attributesMap map[string]string, deliveryMedium deliveryMedium,
+	createAlias bool) (*CreateUserResult, error) {
 
 	deliveryMediums := make([]*string, 0)
-	for _, medium := range ca.deliveryMedium {
+	for _, medium := range deliveryMedium {
 		deliveryMediums = append(deliveryMediums, medium)
 	}
 
 	input := &cognitoidentityprovider.AdminCreateUserInput{
-		ForceAliasCreation:     &ca.createAlias,
+		ForceAliasCreation:     &createAlias,
 		UserAttributes:         ca.toAttributes(attributesMap),
 		DesiredDeliveryMediums: deliveryMediums,
 		TemporaryPassword:      &password,
