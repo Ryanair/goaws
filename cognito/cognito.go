@@ -8,6 +8,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 
+	"github.com/pkg/errors"
+
 	"github.com/Ryanair/goaws"
 )
 
@@ -251,7 +253,7 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 
 	request, output := ca.provider.AdminRespondToAuthChallengeRequest(input)
 	if err := request.Send(); err != nil {
-		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminRespondToAuthChallengeRequest")
+		return nil, errors.Wrap(err, "error in cognito.Adapter while sending AdminRespondToAuthChallengeRequest")
 	}
 	return output, nil
 }
@@ -266,7 +268,7 @@ func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string
 
 	request, output := ca.provider.ChangePasswordRequest(input)
 	if err := request.Send(); err != nil {
-		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending ChangePasswordRequest")
+		return nil, errors.Wrap(err, "error in cognito.Adapter while sending ChangePasswordRequest")
 	}
 	return output, nil
 }

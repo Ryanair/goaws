@@ -17,11 +17,11 @@ func (e Error) Error() string {
 }
 
 func newErr(err error, code, msg string) error {
-	return Error(internal.WrapErr(err, code, msg))
+	return internal.WrapErr(err, code, msg)
 }
 
 func newOpsErr(err error, msg string) error {
-	return Error(internal.WrapOpsErr(err, msg))
+	return internal.WrapOpsErr(err, msg)
 }
 
 func (e Error) SigningFailed() bool {

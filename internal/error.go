@@ -14,20 +14,30 @@ type Error struct {
 	Code    string
 }
 
-func NewError(message, code string) Error {
-	return Error{Message: message, Code: code}
+func (e *Error) Error() string {
+	return e.Message
 }
 
-func WrapOpsErr(err error, msg string) Error {
+func NewError(message, code string) error {
+	return &Error{Message: message, Code: code}
+}
+
+// goErr -> awsErr -> Error -> daveErr -> Error
+
+func WrapOpsErr(err error, msg string) error {
 	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	if awsErr, ok := err.(awserr.Error); ok {
-		return NewError(wrappedErrMsg, awsErr.Code())
-	}
 
-	return NewError(wrappedErrMsg, UnknownOpsErrCode)
+	switch err := errors.Cause(err).(type) {
+	case awserr.Error:
+		return NewError(wrappedErrMsg, err.Code())
+	case *Error:
+		return NewError(wrappedErrMsg, err.Code)
+	default:
+		return NewError(wrappedErrMsg, UnknownOpsErrCode)
+	}
 }
 
-func WrapErr(err error, code, msg string) Error {
+func WrapErr(err error, code, msg string) error {
 	wrappedErrMsg := errors.Wrap(err, msg).Error()
 	return NewError(wrappedErrMsg, code)
 }

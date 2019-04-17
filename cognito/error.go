@@ -12,16 +12,12 @@ const (
 
 type Error internal.Error
 
-func (e Error) Error() string {
-	return e.Message
-}
-
 func wrapErr(err error, code, msg string) error {
-	return Error(internal.WrapErr(err, code, msg))
+	return internal.WrapErr(err, code, msg)
 }
 
 func wrapOpsErr(err error, msg string) error {
-	return Error(internal.WrapOpsErr(err, msg))
+	return internal.WrapOpsErr(err, msg)
 }
 
 func (e Error) AliasExists() bool {
