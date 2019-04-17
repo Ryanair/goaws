@@ -6,23 +6,24 @@ import (
 	"encoding/base64"
 	"time"
 
-	"github.com/Ryanair/goaws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/pkg/errors"
-)
 
-type deliveryMediums []*string
+	"github.com/Ryanair/goaws"
+)
 
 var (
 	emailDeliveryMethod = cognitoidentityprovider.DeliveryMediumTypeEmail
 	smsDeliveryMethod   = cognitoidentityprovider.DeliveryMediumTypeSms
 
-	DeliveryMediumsEmpty       = deliveryMediums([]*string{})
-	DeliveryMediumsEmail       = deliveryMediums([]*string{&emailDeliveryMethod})
-	DeliveryMediumsSms         = deliveryMediums([]*string{&smsDeliveryMethod})
-	DeliveryMediumsEmailAndSms = deliveryMediums([]*string{&emailDeliveryMethod, &smsDeliveryMethod})
+	DeliveryMediumEmpty       = deliveryMedium([]*string{})
+	DeliveryMediumEmail       = deliveryMedium([]*string{&emailDeliveryMethod})
+	DeliveryMediumSms         = deliveryMedium([]*string{&smsDeliveryMethod})
+	DeliveryMediumEmailAndSms = deliveryMedium([]*string{&emailDeliveryMethod, &smsDeliveryMethod})
 )
+
+type deliveryMedium []*string
 
 type AuthenticationResult struct {
 	AccessToken  *string
@@ -54,24 +55,24 @@ type GetUserResult struct {
 }
 
 type Adapter struct {
-	poolID          string
-	clientID        string
-	clientSecret    string
-	createAlias     bool
-	provider        *cognitoidentityprovider.CognitoIdentityProvider
-	deliveryMediums deliveryMediums
+	poolID         string
+	clientID       string
+	clientSecret   string
+	createAlias    bool
+	provider       *cognitoidentityprovider.CognitoIdentityProvider
+	deliveryMedium deliveryMedium
 }
 
-func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string, deliveryMediums deliveryMediums, options ...func(*Adapter) *Adapter) *Adapter {
+func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string, deliveryMedium deliveryMedium, options ...func(*Adapter) *Adapter) *Adapter {
 
 	provider := cognitoidentityprovider.New(cfg.Provider)
 
 	adapter := &Adapter{
-		poolID:          poolID,
-		clientID:        clientID,
-		clientSecret:    clientSecret,
-		provider:        provider,
-		deliveryMediums: deliveryMediums,
+		poolID:         poolID,
+		clientID:       clientID,
+		clientSecret:   clientSecret,
+		provider:       provider,
+		deliveryMedium: deliveryMedium,
 	}
 
 	for _, opt := range options {
@@ -90,7 +91,7 @@ func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) err
 
 	adminAuthResponse, err := ca.SignIn(username, oldPassword)
 	if err != nil {
-		return err
+		return wrapOpsErr(err, "error in cognito.Adapter while changing password")
 	}
 
 	switch *adminAuthResponse.ChallengeName {
@@ -109,14 +110,14 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 		AccessToken: &accessToken,
 	}
 
-	getUserRequest, getUserOutput := ca.provider.GetUserRequest(getUserInput)
-	if err := getUserRequest.Send(); err != nil {
+	request, output := ca.provider.GetUserRequest(getUserInput)
+	if err := request.Send(); err != nil {
 		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending GetUserRequest")
 	}
 
 	result := &GetUserResult{
-		UserAttributes: fromAttributes(getUserOutput.UserAttributes),
-		Username:       getUserOutput.Username,
+		UserAttributes: ca.fromAttributes(output.UserAttributes),
+		Username:       output.Username,
 	}
 	return result, nil
 }
@@ -124,27 +125,27 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 func (ca *Adapter) CreateUser(username, password string, attributesMap map[string]string) (*CreateUserResult, error) {
 
 	deliveryMediums := make([]*string, 0)
-	for _, medium := range ca.deliveryMediums {
+	for _, medium := range ca.deliveryMedium {
 		deliveryMediums = append(deliveryMediums, medium)
 	}
 
-	adminCreateUserInput := &cognitoidentityprovider.AdminCreateUserInput{
+	input := &cognitoidentityprovider.AdminCreateUserInput{
 		ForceAliasCreation:     &ca.createAlias,
-		UserAttributes:         toAttributes(attributesMap),
+		UserAttributes:         ca.toAttributes(attributesMap),
 		DesiredDeliveryMediums: deliveryMediums,
 		TemporaryPassword:      &password,
 		UserPoolId:             &ca.poolID,
 		Username:               &username,
 	}
 
-	adminCreateUserRequest, adminCreateUserOutput := ca.provider.AdminCreateUserRequest(adminCreateUserInput)
-	if err := adminCreateUserRequest.Send(); err != nil {
+	request, output := ca.provider.AdminCreateUserRequest(input)
+	if err := request.Send(); err != nil {
 		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminCreateUserRequest")
 	}
 
-	user := adminCreateUserOutput.User
+	user := output.User
 	return &CreateUserResult{
-		Attributes:       fromAttributes(user.Attributes),
+		Attributes:       ca.fromAttributes(user.Attributes),
 		Enabled:          user.Enabled,
 		CreateDate:       user.UserCreateDate,
 		LastModifiedDate: user.UserLastModifiedDate,
@@ -161,7 +162,7 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 	}
 	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
 
-	adminInitiateAuthInput := &cognitoidentityprovider.AdminInitiateAuthInput{
+	input := &cognitoidentityprovider.AdminInitiateAuthInput{
 		AuthFlow: &authFlow,
 		AuthParameters: map[string]*string{
 			"USERNAME":    &username,
@@ -172,34 +173,34 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 		UserPoolId: &ca.poolID,
 	}
 
-	adminInitiateAuthRequest, adminInitiateAuthOutput := ca.provider.AdminInitiateAuthRequest(adminInitiateAuthInput)
-	if err := adminInitiateAuthRequest.Send(); err != nil {
+	request, output := ca.provider.AdminInitiateAuthRequest(input)
+	if err := request.Send(); err != nil {
 		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest")
 	}
 
 	return &SignInResult{
 		AuthenticationResult: &AuthenticationResult{
-			AccessToken:  adminInitiateAuthOutput.AuthenticationResult.AccessToken,
-			ExpiresIn:    adminInitiateAuthOutput.AuthenticationResult.ExpiresIn,
-			IDToken:      adminInitiateAuthOutput.AuthenticationResult.IdToken,
-			RefreshToken: adminInitiateAuthOutput.AuthenticationResult.RefreshToken,
-			TokenType:    adminInitiateAuthOutput.AuthenticationResult.TokenType,
+			AccessToken:  output.AuthenticationResult.AccessToken,
+			ExpiresIn:    output.AuthenticationResult.ExpiresIn,
+			IDToken:      output.AuthenticationResult.IdToken,
+			RefreshToken: output.AuthenticationResult.RefreshToken,
+			TokenType:    output.AuthenticationResult.TokenType,
 		},
-		ChallengeName:       adminInitiateAuthOutput.ChallengeName,
-		ChallengeParameters: adminInitiateAuthOutput.ChallengeParameters,
-		Session:             adminInitiateAuthOutput.Session,
+		ChallengeName:       output.ChallengeName,
+		ChallengeParameters: output.ChallengeParameters,
+		Session:             output.Session,
 	}, nil
 }
 
 func (ca *Adapter) SignOut(username string) error {
 
-	adminUserGlobalSignOutInput := &cognitoidentityprovider.AdminUserGlobalSignOutInput{
+	input := &cognitoidentityprovider.AdminUserGlobalSignOutInput{
 		UserPoolId: &ca.poolID,
 		Username:   &username,
 	}
 
-	adminUserGlobalSignOutRequest, _ := ca.provider.AdminUserGlobalSignOutRequest(adminUserGlobalSignOutInput)
-	if err := adminUserGlobalSignOutRequest.Send(); err != nil {
+	request, _ := ca.provider.AdminUserGlobalSignOutRequest(input)
+	if err := request.Send(); err != nil {
 		return wrapOpsErr(err, "error in cognito.Adapter while sending AdminUserGlobalSignOutRequest")
 	}
 	return nil
@@ -207,13 +208,13 @@ func (ca *Adapter) SignOut(username string) error {
 
 func (ca *Adapter) ResetUserPassword(username string) error {
 
-	adminResetUserPasswordInput := &cognitoidentityprovider.AdminResetUserPasswordInput{
+	input := &cognitoidentityprovider.AdminResetUserPasswordInput{
 		UserPoolId: &ca.poolID,
 		Username:   &username,
 	}
 
-	adminResetUserPasswordRequest, _ := ca.provider.AdminResetUserPasswordRequest(adminResetUserPasswordInput)
-	if err := adminResetUserPasswordRequest.Send(); err != nil {
+	request, _ := ca.provider.AdminResetUserPasswordRequest(input)
+	if err := request.Send(); err != nil {
 		return wrapOpsErr(err, "error in cognito.Adapter while sending AdminResetUserPasswordRequest")
 	}
 	return nil
@@ -226,7 +227,7 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 		return wrapErr(err, ErrSecretHashEncoding, "Cannot encode secret hash")
 	}
 
-	confirmForgotPasswordInput := &cognitoidentityprovider.ConfirmForgotPasswordInput{
+	input := &cognitoidentityprovider.ConfirmForgotPasswordInput{
 		ClientId:         &ca.clientID,
 		ConfirmationCode: &confirmationCode,
 		Password:         &newPassword,
@@ -234,8 +235,8 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 		Username:         &username,
 	}
 
-	confirmForgotPasswordRequest, _ := ca.provider.ConfirmForgotPasswordRequest(confirmForgotPasswordInput)
-	if err := confirmForgotPasswordRequest.Send(); err != nil {
+	request, _ := ca.provider.ConfirmForgotPasswordRequest(input)
+	if err := request.Send(); err != nil {
 		return wrapOpsErr(err, "error in cognito.Adapter while sending ConfirmForgotPasswordRequest")
 	}
 	return nil
@@ -251,7 +252,7 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 
 	challengeName := cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired
 
-	adminRespondToAuthChallengeInput := &cognitoidentityprovider.AdminRespondToAuthChallengeInput{
+	input := &cognitoidentityprovider.AdminRespondToAuthChallengeInput{
 		ChallengeName: &challengeName,
 		ChallengeResponses: map[string]*string{
 			"USERNAME":     &username,
@@ -263,26 +264,26 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 		Session:    session,
 	}
 
-	adminRespondToAuthChallengeRequest, adminRespondToAuthChallengeOutput := ca.provider.AdminRespondToAuthChallengeRequest(adminRespondToAuthChallengeInput)
-	if err := adminRespondToAuthChallengeRequest.Send(); err != nil {
+	request, output := ca.provider.AdminRespondToAuthChallengeRequest(input)
+	if err := request.Send(); err != nil {
 		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminRespondToAuthChallengeRequest")
 	}
-	return adminRespondToAuthChallengeOutput, nil
+	return output, nil
 }
 
 func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string) (*cognitoidentityprovider.ChangePasswordOutput, error) {
 
-	changePasswordInput := &cognitoidentityprovider.ChangePasswordInput{
+	input := &cognitoidentityprovider.ChangePasswordInput{
 		AccessToken:      token,
 		PreviousPassword: &oldPassword,
 		ProposedPassword: &newPassword,
 	}
 
-	changePasswordRequest, changePasswordOutput := ca.provider.ChangePasswordRequest(changePasswordInput)
-	if err := changePasswordRequest.Send(); err != nil {
+	request, output := ca.provider.ChangePasswordRequest(input)
+	if err := request.Send(); err != nil {
 		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending ChangePasswordRequest")
 	}
-	return changePasswordOutput, nil
+	return output, nil
 }
 
 func (ca *Adapter) generateSecretHash(username string) (string, error) {
@@ -294,24 +295,31 @@ func (ca *Adapter) generateSecretHash(username string) (string, error) {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
-func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
+func (ca *Adapter) fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
 	attributesMap := make(map[string]string)
 	for _, attr := range attrs {
-		attributesMap[*attr.Name] = *attr.Value
+		if attr.Name != nil {
+			continue
+		}
+		value := ""
+		if attr.Value == nil {
+			value = *attr.Value
+		}
+		attributesMap[*attr.Name] = value
 	}
 	return attributesMap
 }
 
-func toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.AttributeType {
+func (ca *Adapter) toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.AttributeType {
 	attributes := make([]*cognitoidentityprovider.AttributeType, 0)
 	for attrName, attrValue := range attributesMap {
-		attr := attribute(attrName, attrValue)
+		attr := ca.attribute(attrName, attrValue)
 		attributes = append(attributes, attr)
 	}
 	return attributes
 }
 
-func attribute(name, value string) *cognitoidentityprovider.AttributeType {
+func (ca *Adapter) attribute(name, value string) *cognitoidentityprovider.AttributeType {
 	return &cognitoidentityprovider.AttributeType{
 		Name:  &name,
 		Value: &value,
