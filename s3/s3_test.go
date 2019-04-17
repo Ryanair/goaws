@@ -3,6 +3,8 @@
 package s3
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/rs/xid"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,9 +54,23 @@ func TestClient_GeneratePutURL_signingFailed(t *testing.T) {
 	assert.True(t, isSigningFailed(genErr))
 }
 
+func TestClient_PutObject_ok(t *testing.T) {
+	// given & when
+	putErr := cli.PutObject(bucketID, "some_random_key", bytes.NewReader([]byte("abc")))
+
+	// then
+	out, getErr := cli.GetObject(bucketID, "some_random_key")
+	savedItem, readErr := ioutil.ReadAll(out)
+
+	assert.NoError(t, putErr)
+	assert.NoError(t, getErr)
+	assert.NoError(t, readErr)
+	assert.Equal(t, "abc", string(savedItem))
+}
+
 func TestClient_GetObject_keyNotFound(t *testing.T) {
 	// given & when
-	_, getErr := cli.GetObject(bucketID, "some_random_key")
+	_, getErr := cli.GetObject(bucketID, "non_existing_key")
 
 	// then
 	isKeyNotFound := func(err error) bool {
@@ -90,14 +107,22 @@ func setupS3() {
 		if err == credentials.ErrNoValidProvidersFoundInChain {
 			log.Fatalf("Test failed due to lack of AWS credentials in chain.")
 		}
-		log.Fatalf("couldn't create bucket: %s", err)
+		log.Fatalf("couldn't create bucket %s due to: %s", bucketID, err)
 	}
 }
 
 func teardownS3() {
+	iter := s3manager.NewDeleteListIterator(cli.s3, &s3.ListObjectsInput{
+		Bucket: aws.String(bucketID),
+	})
+
+	if err := s3manager.NewBatchDeleteWithClient(cli.s3).Delete(aws.BackgroundContext(), iter); err != nil {
+		log.Fatalf("couldn't delete objects from bucket %s due to: %s", bucketID, err)
+	}
+
 	if _, err := cli.s3.DeleteBucket(&s3.DeleteBucketInput{
 		Bucket: aws.String(bucketID),
 	}); err != nil {
-		log.Fatalf("couldn't delete bucket: %s", err)
+		log.Fatalf("couldn't delete bucket %s due to: %s", bucketID, err)
 	}
 }

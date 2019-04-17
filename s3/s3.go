@@ -66,3 +66,16 @@ func (c *Client) GetObject(bucket, key string) (io.ReadCloser, error) {
 
 	return out.Body, nil
 }
+
+func (c *Client) PutObject(bucket, key string, body io.ReadSeeker) error {
+	_, err := c.s3.PutObject(&s3.PutObjectInput{
+		Body:   body,
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return newOpsErr(err, "put object failed")
+	}
+
+	return nil
+}
