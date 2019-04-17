@@ -6,9 +6,7 @@ import (
 	"encoding/base64"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"github.com/pkg/errors"
 
 	"github.com/Ryanair/goaws"
 )
@@ -311,17 +309,4 @@ func (ca *Adapter) attribute(name, value string) *cognitoidentityprovider.Attrib
 		Name:  &name,
 		Value: &value,
 	}
-}
-
-func wrapOpsErr(err error, msg string) error {
-	wrappedErr := errors.Wrap(err, msg)
-	if awsErr, ok := err.(awserr.Error); ok {
-		return NewError(wrappedErr.Error(), awsErr.Code())
-	}
-	return wrappedErr
-}
-
-func wrapErr(err error, code, msg string) error {
-	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	return NewError(wrappedErrMsg, code)
 }

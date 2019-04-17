@@ -1,6 +1,8 @@
 package cognito
 
 import (
+	"github.com/Ryanair/goaws/internal"
+
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 )
 
@@ -8,69 +10,70 @@ const (
 	ErrSecretHashEncoding = "SecretHashEncoding"
 )
 
-type Error struct {
-	Message string
-	Code    string
-}
-
-func NewError(message, code string) Error {
-	return Error{Message: message, Code: code}
-}
+type Error internal.Error
 
 func (e Error) Error() string {
 	return e.Message
 }
 
+func wrapErr(err error, code, msg string) error {
+	return Error(internal.WrapErr(err, code, msg))
+}
+
+func wrapOpsErr(err error, msg string) error {
+	return Error(internal.WrapOpsErr(err, msg))
+}
+
 func (e Error) AliasExists() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeAliasExistsException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeAliasExistsException)
 }
 
 func (e Error) CodeDeliveryFailure() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeCodeDeliveryFailureException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeCodeDeliveryFailureException)
 }
 
 func (e Error) CodeMismatch() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeCodeMismatchException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeCodeMismatchException)
 }
 
 func (e Error) CodeExpired() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeExpiredCodeException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeExpiredCodeException)
 }
 
 func (e Error) GroupExists() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeGroupExistsException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeGroupExistsException)
 }
 
 func (e Error) InvalidPassword() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeInvalidPasswordException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeInvalidPasswordException)
 }
 
 func (e Error) NotAuthorized() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeNotAuthorizedException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeNotAuthorizedException)
 }
 
 func (e Error) PasswordResetRequired() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodePasswordResetRequiredException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodePasswordResetRequiredException)
 }
 
 func (e Error) UserNotConfirmed() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeUserNotConfirmedException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeUserNotConfirmedException)
 }
 
 func (e Error) UserNotFound() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeUserNotFoundException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeUserNotFoundException)
 }
 
 func (e Error) UsernameExists() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeUsernameExistsException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeUsernameExistsException)
 }
 
 func (e Error) UnsupportedUserState() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeUnsupportedUserStateException)
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeUnsupportedUserStateException)
 }
 
 func (e Error) InternalError() bool {
-	return anyEquals(e.Code, cognitoidentityprovider.ErrCodeConcurrentModificationException,
+	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeConcurrentModificationException,
 		cognitoidentityprovider.ErrCodeDuplicateProviderException,
 		cognitoidentityprovider.ErrCodeEnableSoftwareTokenMFAException,
 		cognitoidentityprovider.ErrCodeInternalErrorException,
@@ -96,13 +99,4 @@ func (e Error) InternalError() bool {
 		cognitoidentityprovider.ErrCodeUserPoolAddOnNotEnabledException,
 		cognitoidentityprovider.ErrCodeUserPoolTaggingException,
 	)
-}
-
-func anyEquals(origCode string, errCodes ...string) bool {
-	for _, ec := range errCodes {
-		if origCode == ec {
-			return true
-		}
-	}
-	return false
 }
