@@ -1,9 +1,12 @@
+// +build local ci
+
 package apigw_test
 
 import (
 	"testing"
 
 	"github.com/Ryanair/goaws/lambda/apigw"
+
 	"github.com/stretchr/testify/assert"
 )
 

@@ -62,3 +62,15 @@ func Credentials(id, secret, token string) func(*aws.Config) {
 		c.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
 	}
 }
+
+func Endpoint(endpoint string) func(*aws.Config) {
+	return func(c *aws.Config) {
+		c.WithEndpoint(endpoint)
+	}
+}
+
+func Debug() func(*aws.Config) {
+	return func(c *aws.Config) {
+		c.WithLogLevel(aws.LogDebugWithRequestRetries).WithLogLevel(aws.LogDebugWithRequestErrors)
+	}
+}
