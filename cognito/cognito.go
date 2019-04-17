@@ -75,16 +75,16 @@ func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) err
 
 	adminAuthResponse, err := ca.SignIn(username, oldPassword)
 	if err != nil {
-		return wrapOpsErr(err, "error in cognito.Adapter while changing password")
+		return wrapOpsErr(err, "error in cognito.Adapter while signing in before changing password")
 	}
 
 	switch *adminAuthResponse.ChallengeName {
 	case cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired:
 		_, err := ca.respondToAuthChallenge(username, newPassword, adminAuthResponse.Session)
-		return err
+		return wrapOpsErr(err, "error in cognito.Adapter while responding to auth challenge")
 	default:
 		_, err := ca.changePassword(oldPassword, newPassword, adminAuthResponse.AuthenticationResult.AccessToken)
-		return err
+		return wrapOpsErr(err, "error in cognito.Adapter while changing password")
 	}
 }
 
@@ -100,7 +100,7 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 	}
 
 	result := &GetUserResult{
-		UserAttributes: ca.fromAttributes(output.UserAttributes),
+		UserAttributes: fromAttributes(output.UserAttributes),
 		Username:       output.Username,
 	}
 	return result, nil
@@ -116,7 +116,7 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 
 	input := &cognitoidentityprovider.AdminCreateUserInput{
 		ForceAliasCreation:     &createAlias,
-		UserAttributes:         ca.toAttributes(attributesMap),
+		UserAttributes:         toAttributes(attributesMap),
 		DesiredDeliveryMediums: deliveryMediums,
 		TemporaryPassword:      &password,
 		UserPoolId:             &ca.poolID,
@@ -130,7 +130,7 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 
 	user := output.User
 	return &CreateUserResult{
-		Attributes:       ca.fromAttributes(user.Attributes),
+		Attributes:       fromAttributes(user.Attributes),
 		Enabled:          user.Enabled,
 		CreateDate:       user.UserCreateDate,
 		LastModifiedDate: user.UserLastModifiedDate,
@@ -280,7 +280,7 @@ func (ca *Adapter) generateSecretHash(username string) (string, error) {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
-func (ca *Adapter) fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
+func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
 	attributesMap := make(map[string]string)
 	for _, attr := range attrs {
 		if attr.Name != nil {
@@ -295,16 +295,16 @@ func (ca *Adapter) fromAttributes(attrs []*cognitoidentityprovider.AttributeType
 	return attributesMap
 }
 
-func (ca *Adapter) toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.AttributeType {
+func toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.AttributeType {
 	attributes := make([]*cognitoidentityprovider.AttributeType, 0)
 	for attrName, attrValue := range attributesMap {
-		attr := ca.attribute(attrName, attrValue)
+		attr := attribute(attrName, attrValue)
 		attributes = append(attributes, attr)
 	}
 	return attributes
 }
 
-func (ca *Adapter) attribute(name, value string) *cognitoidentityprovider.AttributeType {
+func attribute(name, value string) *cognitoidentityprovider.AttributeType {
 	return &cognitoidentityprovider.AttributeType{
 		Name:  &name,
 		Value: &value,
