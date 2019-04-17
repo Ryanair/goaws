@@ -2,7 +2,7 @@ package dynamodb
 
 import (
 	"github.com/Ryanair/goaws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -146,18 +146,4 @@ func marshalKey(key Key) (map[string]*dynamodb.AttributeValue, error) {
 	}
 
 	return keys, nil
-}
-
-func wrapOpsErr(err error, msg string) error {
-	wrappedErr := errors.Wrap(err, msg)
-	if awsErr, ok := err.(awserr.Error); ok {
-		return NewError(wrappedErr.Error(), awsErr.Code())
-	}
-
-	return wrappedErr
-}
-
-func wrapErr(err error, code, msg string) error {
-	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	return NewError(wrappedErrMsg, code)
 }

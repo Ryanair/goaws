@@ -1,3 +1,5 @@
+// +build local ci
+
 package apigw_test
 
 import (
