@@ -7,17 +7,28 @@ import (
 )
 
 const (
-	ErrSecretHashEncoding = "SecretHashEncoding"
+	ErrSecretHashEncoding         = "SecretHashEncodingErr"
+	ErrCodeSignIn                 = "SignInErr"
+	ErrCodeRespondToAuthChallenge = "RespondToAuthChallengeErr"
+	ErrCodeChangePasswordRequest  = "ChangePasswordRequestErr"
 )
 
 type Error internal.Error
 
-func wrapErr(err error, code, msg string) error {
-	return internal.WrapErr(err, code, msg)
+func (e Error) Error() string {
+	return e.Message
 }
 
-func wrapOpsErr(err error, msg string) error {
-	return internal.WrapOpsErr(err, msg)
+func (e Error) Cause() error {
+	return e.Causer
+}
+
+func wrapErr(err error, msg string) error {
+	return Error(internal.WrapErr(err, msg))
+}
+
+func wrapErrWithCode(err error, msg, code string) error {
+	return Error(internal.WrapErrWithCode(err, msg, code))
 }
 
 func (e Error) AliasExists() bool {
@@ -66,6 +77,18 @@ func (e Error) UsernameExists() bool {
 
 func (e Error) UnsupportedUserState() bool {
 	return internal.AnyEquals(e.Code, cognitoidentityprovider.ErrCodeUnsupportedUserStateException)
+}
+
+func (e Error) SignInFailed() bool {
+	return internal.AnyEquals(e.Code, ErrCodeSignIn)
+}
+
+func (e Error) RespondToAuthChallengeFailed() bool {
+	return internal.AnyEquals(e.Code, ErrCodeRespondToAuthChallenge)
+}
+
+func (e Error) ChangePasswordRequestFailed() bool {
+	return internal.AnyEquals(e.Code, ErrCodeChangePasswordRequest)
 }
 
 func (e Error) InternalError() bool {

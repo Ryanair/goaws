@@ -6,40 +6,36 @@ import (
 )
 
 const (
-	UnknownOpsErrCode = "UnknownOpsErr"
+	ErrCodeUnknownBehaviour = "ErrUnknownBehaviour"
 )
 
 type Error struct {
 	Message string
 	Code    string
+	Causer  error
 }
 
-func (e *Error) Error() string {
-	return e.Message
-}
-
-func NewError(message, code string) error {
-	return &Error{Message: message, Code: code}
-}
-
-// goErr -> awsErr -> Error -> daveErr -> Error
-
-func WrapOpsErr(err error, msg string) error {
-	wrappedErrMsg := errors.Wrap(err, msg).Error()
-
-	switch err := errors.Cause(err).(type) {
-	case awserr.Error:
-		return NewError(wrappedErrMsg, err.Code())
-	case *Error:
-		return NewError(wrappedErrMsg, err.Code)
-	default:
-		return NewError(wrappedErrMsg, UnknownOpsErrCode)
+func NewError(message, code string, causer error) Error {
+	return Error{
+		Message: message,
+		Code:    code,
+		Causer:  causer,
 	}
 }
 
-func WrapErr(err error, code, msg string) error {
+// WrapErrWithCode should be used to apply behavior to wrapped error, the behavior is specified by providing error code
+func WrapErrWithCode(err error, msg, code string) Error {
 	wrappedErrMsg := errors.Wrap(err, msg).Error()
-	return NewError(wrappedErrMsg, code)
+	return NewError(wrappedErrMsg, code, err)
+}
+
+// WrapErr should be used to wrap AWS SDK errors or errors with unknown behavior
+func WrapErr(err error, msg string) Error {
+	if aerr, ok := err.(awserr.Error); ok {
+		return WrapErrWithCode(err, msg, aerr.Code())
+	}
+
+	return WrapErrWithCode(err, msg, ErrCodeUnknownBehaviour)
 }
 
 func AnyEquals(origCode string, errCodes ...string) bool {

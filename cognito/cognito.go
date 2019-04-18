@@ -8,8 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 
-	"github.com/pkg/errors"
-
 	"github.com/Ryanair/goaws"
 )
 
@@ -74,19 +72,18 @@ func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapt
 }
 
 func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) error {
-
 	adminAuthResponse, err := ca.SignIn(username, oldPassword)
 	if err != nil {
-		return wrapOpsErr(err, "error in cognito.Adapter while signing in before changing password")
+		return wrapErrWithCode(err, "error in cognito.Adapter while signing in before changing password", ErrCodeSignIn)
 	}
 
 	switch *adminAuthResponse.ChallengeName {
 	case cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired:
 		_, err := ca.respondToAuthChallenge(username, newPassword, adminAuthResponse.Session)
-		return wrapOpsErr(err, "error in cognito.Adapter while responding to auth challenge")
+		return wrapErrWithCode(err, "error in cognito.Adapter while responding to auth challenge", ErrCodeRespondToAuthChallenge)
 	default:
 		_, err := ca.changePassword(oldPassword, newPassword, adminAuthResponse.AuthenticationResult.AccessToken)
-		return wrapOpsErr(err, "error in cognito.Adapter while changing password")
+		return wrapErrWithCode(err, "error in cognito.Adapter while changing password", ErrCodeChangePasswordRequest)
 	}
 }
 
@@ -96,9 +93,9 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 		AccessToken: &accessToken,
 	}
 
-	request, output := ca.provider.GetUserRequest(getUserInput)
-	if err := request.Send(); err != nil {
-		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending GetUserRequest")
+	output, err := ca.provider.GetUser(getUserInput)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending GetUserRequest")
 	}
 
 	result := &GetUserResult{
@@ -125,9 +122,9 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 		Username:               &username,
 	}
 
-	request, output := ca.provider.AdminCreateUserRequest(input)
-	if err := request.Send(); err != nil {
-		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminCreateUserRequest")
+	output, err := ca.provider.AdminCreateUser(input)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending AdminCreateUserRequest")
 	}
 
 	user := output.User
@@ -145,7 +142,7 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 
 	secretHash, err := ca.generateSecretHash(username)
 	if err != nil {
-		return nil, wrapErr(err, ErrSecretHashEncoding, "Cannot encode secret hash")
+		return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
 	}
 	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
 
@@ -160,9 +157,9 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 		UserPoolId: &ca.poolID,
 	}
 
-	request, output := ca.provider.AdminInitiateAuthRequest(input)
-	if err := request.Send(); err != nil {
-		return nil, wrapOpsErr(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest")
+	output, err := ca.provider.AdminInitiateAuth(input)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest")
 	}
 
 	return &SignInResult{
@@ -186,9 +183,9 @@ func (ca *Adapter) SignOut(username string) error {
 		Username:   &username,
 	}
 
-	request, _ := ca.provider.AdminUserGlobalSignOutRequest(input)
-	if err := request.Send(); err != nil {
-		return wrapOpsErr(err, "error in cognito.Adapter while sending AdminUserGlobalSignOutRequest")
+	_, err := ca.provider.AdminUserGlobalSignOut(input)
+	if err != nil {
+		return wrapErr(err, "error in cognito.Adapter while sending AdminUserGlobalSignOutRequest")
 	}
 	return nil
 }
@@ -202,7 +199,7 @@ func (ca *Adapter) ResetUserPassword(username string) error {
 
 	request, _ := ca.provider.AdminResetUserPasswordRequest(input)
 	if err := request.Send(); err != nil {
-		return wrapOpsErr(err, "error in cognito.Adapter while sending AdminResetUserPasswordRequest")
+		return wrapErr(err, "error in cognito.Adapter while sending AdminResetUserPasswordRequest")
 	}
 	return nil
 }
@@ -211,7 +208,7 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 
 	secretHash, err := ca.generateSecretHash(username)
 	if err != nil {
-		return wrapErr(err, ErrSecretHashEncoding, "Cannot encode secret hash")
+		return wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
 	}
 
 	input := &cognitoidentityprovider.ConfirmForgotPasswordInput{
@@ -222,9 +219,9 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 		Username:         &username,
 	}
 
-	request, _ := ca.provider.ConfirmForgotPasswordRequest(input)
-	if err := request.Send(); err != nil {
-		return wrapOpsErr(err, "error in cognito.Adapter while sending ConfirmForgotPasswordRequest")
+	_, err = ca.provider.ConfirmForgotPassword(input)
+	if err != nil {
+		return wrapErr(err, "error in cognito.Adapter while sending ConfirmForgotPasswordRequest")
 	}
 	return nil
 }
@@ -234,7 +231,7 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 
 	secretHash, err := ca.generateSecretHash(username)
 	if err != nil {
-		return nil, wrapErr(err, ErrSecretHashEncoding, "Cannot encode secret hash")
+		return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
 	}
 
 	challengeName := cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired
@@ -251,9 +248,9 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 		Session:    session,
 	}
 
-	request, output := ca.provider.AdminRespondToAuthChallengeRequest(input)
-	if err := request.Send(); err != nil {
-		return nil, errors.Wrap(err, "error in cognito.Adapter while sending AdminRespondToAuthChallengeRequest")
+	output, err := ca.provider.AdminRespondToAuthChallenge(input)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending AdminRespondToAuthChallengeRequest")
 	}
 	return output, nil
 }
@@ -266,9 +263,9 @@ func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string
 		ProposedPassword: &newPassword,
 	}
 
-	request, output := ca.provider.ChangePasswordRequest(input)
-	if err := request.Send(); err != nil {
-		return nil, errors.Wrap(err, "error in cognito.Adapter while sending ChangePasswordRequest")
+	output, err := ca.provider.ChangePassword(input)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending ChangePasswordRequest")
 	}
 	return output, nil
 }

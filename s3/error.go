@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	SigningURLErrCode = "SigningURLErr"
+	ErrCodeSigningURL = "SigningURLErr"
 )
 
 type Error internal.Error
@@ -16,16 +16,20 @@ func (e Error) Error() string {
 	return e.Message
 }
 
-func newErr(err error, code, msg string) error {
-	return internal.WrapErr(err, code, msg)
+func (e Error) Cause() error {
+	return e.Causer
 }
 
-func newOpsErr(err error, msg string) error {
-	return internal.WrapOpsErr(err, msg)
+func wrapErr(err error, msg string) error {
+	return Error(internal.WrapErr(err, msg))
+}
+
+func wrapErrWithCode(err error, msg, code string) error {
+	return Error(internal.WrapErrWithCode(err, msg, code))
 }
 
 func (e Error) SigningFailed() bool {
-	return internal.AnyEquals(e.Code, SigningURLErrCode)
+	return internal.AnyEquals(e.Code, ErrCodeSigningURL)
 }
 
 func (e Error) BucketNotFound() bool {
