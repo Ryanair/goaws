@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	MarshalErrCode            = "DynamoDBMarshalErr"
-	UnmarshalErrCode          = "DynamoDBUnmarshalErr"
-	InvalidConditionErrCode   = "DynamoDBInvalidConditionErr"
-	ValidationErrCode         = "ValidationException"
-	ThrottlingErrCode         = "ThrottlingException"
-	UnrecognizedClientErrCode = "UnrecognizedClientException"
+	ErrCodeMarshal            = "DynamoDBMarshalErr"
+	ErrCodeUnmarshal          = "DynamoDBUnmarshalErr"
+	ErrCodeInvalidCondition   = "DynamoDBInvalidConditionErr"
+	ErrCodeValidation         = "ValidationException"
+	ErrCodeThrottling         = "ThrottlingException"
+	ErrCodeUnrecognizedClient = "UnrecognizedClientException"
 )
 
 type Error internal.Error
@@ -21,28 +21,32 @@ func (e Error) Error() string {
 	return e.Message
 }
 
-func wrapErr(err error, code, msg string) error {
-	return Error(internal.WrapErr(err, code, msg))
+func (e Error) Cause() error {
+	return e.Causer
 }
 
-func wrapOpsErr(err error, msg string) error {
-	return Error(internal.WrapOpsErr(err, msg))
+func wrapErr(err error, msg string) error {
+	return Error(internal.WrapErr(err, msg))
+}
+
+func wrapErrWithCode(err error, msg, code string) error {
+	return Error(internal.WrapErrWithCode(err, msg, code))
 }
 
 func (e Error) MarshallingFailed() bool {
-	return internal.AnyEquals(e.Code, MarshalErrCode)
+	return internal.AnyEquals(e.Code, ErrCodeMarshal)
 }
 
 func (e Error) UnmarshallingFailed() bool {
-	return internal.AnyEquals(e.Code, UnmarshalErrCode)
+	return internal.AnyEquals(e.Code, ErrCodeUnmarshal)
 }
 
 func (e Error) InvalidCondition() bool {
-	return internal.AnyEquals(e.Code, InvalidConditionErrCode)
+	return internal.AnyEquals(e.Code, ErrCodeInvalidCondition)
 }
 
 func (e Error) ValidationFailed() bool {
-	return internal.AnyEquals(e.Code, ValidationErrCode)
+	return internal.AnyEquals(e.Code, ErrCodeValidation)
 }
 
 func (e Error) ConditionFailed() bool {
@@ -103,8 +107,8 @@ func (e Error) ResourceInUse() bool {
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Programming.Errors.html
 func (e Error) Retryable() bool {
 	return internal.AnyEquals(e.Code,
-		ThrottlingErrCode,
-		UnrecognizedClientErrCode,
+		ErrCodeThrottling,
+		ErrCodeUnrecognizedClient,
 		dynamodb.ErrCodeItemCollectionSizeLimitExceededException,
 		dynamodb.ErrCodeLimitExceededException,
 		dynamodb.ErrCodeProvisionedThroughputExceededException,

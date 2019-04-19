@@ -38,7 +38,7 @@ func (c *Client) GeneratePutURL(bucket, key, contentType string, expire time.Dur
 
 	url, err := req.Presign(expire)
 	if err != nil {
-		return "", newErr(err, SigningURLErrCode, "signing url failed")
+		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url failed")
 	}
 
 	return url, nil
@@ -49,7 +49,7 @@ func (c *Client) DeleteObject(bucket, key string) error {
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}); err != nil {
-		return newOpsErr(err, "delete object failed")
+		return wrapErr(err, "delete object failed")
 	}
 
 	return nil
@@ -61,7 +61,7 @@ func (c *Client) GetObject(bucket, key string) (io.ReadCloser, error) {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return nil, newOpsErr(err, "get object failed")
+		return nil, wrapErr(err, "get object failed")
 	}
 
 	return out.Body, nil
@@ -74,7 +74,7 @@ func (c *Client) PutObject(bucket, key string, body io.ReadSeeker) error {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return newOpsErr(err, "put object failed")
+		return wrapErr(err, "put object failed")
 	}
 
 	return nil
