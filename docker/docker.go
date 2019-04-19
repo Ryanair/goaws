@@ -1,4 +1,4 @@
-package internal
+package docker
 
 import (
 	"log"
@@ -10,13 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DockerImage struct {
+type Image struct {
 	Repo string
 	Tag  string
 	Env  []string
 }
 
-func DockerSetup(m *testing.M, img DockerImage, setup func(*dockertest.Resource) error, purge ...func(*dockertest.Resource) error) {
+func Setup(m *testing.M, img Image, setup func(*dockertest.Resource) error, purge ...func(*dockertest.Resource) error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
