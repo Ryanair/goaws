@@ -154,18 +154,18 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 
 func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 
-	secretHash, err := ca.generateSecretHash(username)
-	if err != nil {
-		return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
-	}
+	// secretHash, err := ca.generateSecretHash(username)
+	// if err != nil {
+	// 	return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
+	// }
 	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
 
 	input := &cognitoidentityprovider.AdminInitiateAuthInput{
 		AuthFlow: &authFlow,
 		AuthParameters: map[string]*string{
-			"USERNAME":    &username,
-			"PASSWORD":    &password,
-			"SECRET_HASH": &secretHash,
+			"USERNAME": &username,
+			"PASSWORD": &password,
+			// "SECRET_HASH": &secretHash,
 		},
 		ClientId:   &ca.clientID,
 		UserPoolId: &ca.poolID,
@@ -243,10 +243,10 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 func (ca *Adapter) respondToAuthChallenge(username, password string,
 	session *string) (*cognitoidentityprovider.AdminRespondToAuthChallengeOutput, error) {
 
-	secretHash, err := ca.generateSecretHash(username)
-	if err != nil {
-		return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
-	}
+	// secretHash, err := ca.generateSecretHash(username)
+	// if err != nil {
+	// 	return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
+	// }
 
 	challengeName := cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired
 
@@ -255,7 +255,7 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 		ChallengeResponses: map[string]*string{
 			"USERNAME":     &username,
 			"NEW_PASSWORD": &password,
-			"SECRET_HASH":  &secretHash,
+			// "SECRET_HASH":  &secretHash,
 		},
 		ClientId:   &ca.clientID,
 		UserPoolId: &ca.poolID,
