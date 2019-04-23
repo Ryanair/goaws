@@ -1,6 +1,7 @@
 package apigw_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/Ryanair/goaws/lambda/apigw"
@@ -37,10 +38,14 @@ func TestNewHandler_postRequest(t *testing.T) {
 	wrappedHandler := apigw.WrapHandler(mockHandler, apigw.Body(), apigw.Headers())
 
 	// when
-	_, err := wrappedHandler(request)
+	resp, err := wrappedHandler(request)
 
 	// then
 	assert.Nil(t, err)
+	assert.Equal(t, events.APIGatewayProxyResponse{
+		StatusCode: http.StatusCreated,
+		Body:       "API response message",
+	}, resp)
 	assert.Equal(t, &apigw.Request{
 		Resource: "/{proxy+}",
 		Method:   "POST",
@@ -67,16 +72,20 @@ func TestNewHandler_getRequest(t *testing.T) {
 		},
 	}
 	mockHandler := &mockHandler{
-		Response: apigw.NewResponse(apigw.StatusCreated, "API response message"),
+		Response: apigw.NewResponse(apigw.StatusOK, "API response message"),
 		error:    nil,
 	}
 	wrappedHandler := apigw.WrapHandler(mockHandler, apigw.PathParams(), apigw.QueryParams(), apigw.Headers())
 
 	// when
-	_, err := wrappedHandler(request)
+	resp, err := wrappedHandler(request)
 
 	// then
 	assert.Nil(t, err)
+	assert.Equal(t, events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       "API response message",
+	}, resp)
 	assert.Equal(t, &apigw.Request{
 		Resource: "/{proxy+}",
 		Method:   "GET",
@@ -108,16 +117,20 @@ func TestNewHandler_getRequest_optionsNotSpecified(t *testing.T) {
 		},
 	}
 	mockHandler := &mockHandler{
-		Response: apigw.NewResponse(apigw.StatusCreated, "API response message"),
+		Response: apigw.NewResponse(apigw.StatusOK, "API response message"),
 		error:    nil,
 	}
 	wrappedHandler := apigw.WrapHandler(mockHandler)
 
 	// when
-	_, err := wrappedHandler(request)
+	resp, err := wrappedHandler(request)
 
 	// then
 	assert.Nil(t, err)
+	assert.Equal(t, events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       "API response message",
+	}, resp)
 	assert.Equal(t, &apigw.Request{
 		Resource: "/{proxy+}",
 		Method:   "GET",
