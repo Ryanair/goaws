@@ -15,13 +15,13 @@ var (
 	emailDeliveryMethod = cognitoidentityprovider.DeliveryMediumTypeEmail
 	smsDeliveryMethod   = cognitoidentityprovider.DeliveryMediumTypeSms
 
-	DeliveryMediumEmpty       = deliveryMedium([]*string{})
-	DeliveryMediumEmail       = deliveryMedium([]*string{&emailDeliveryMethod})
-	DeliveryMediumSms         = deliveryMedium([]*string{&smsDeliveryMethod})
-	DeliveryMediumEmailAndSms = deliveryMedium([]*string{&emailDeliveryMethod, &smsDeliveryMethod})
+	DeliveryMediumEmpty       = DeliveryMedium([]*string{})
+	DeliveryMediumEmail       = DeliveryMedium([]*string{&emailDeliveryMethod})
+	DeliveryMediumSms         = DeliveryMedium([]*string{&smsDeliveryMethod})
+	DeliveryMediumEmailAndSms = DeliveryMedium([]*string{&emailDeliveryMethod, &smsDeliveryMethod})
 )
 
-type deliveryMedium []*string
+type DeliveryMedium []*string
 
 type AuthenticationResult struct {
 	AccessToken  *string
@@ -52,11 +52,22 @@ type GetUserResult struct {
 	Username       *string
 }
 
+type provider interface {
+	GetUser(*cognitoidentityprovider.GetUserInput) (*cognitoidentityprovider.GetUserOutput, error)
+	AdminCreateUser(*cognitoidentityprovider.AdminCreateUserInput) (*cognitoidentityprovider.AdminCreateUserOutput, error)
+	AdminInitiateAuth(*cognitoidentityprovider.AdminInitiateAuthInput) (*cognitoidentityprovider.AdminInitiateAuthOutput, error)
+	ConfirmForgotPassword(*cognitoidentityprovider.ConfirmForgotPasswordInput) (*cognitoidentityprovider.ConfirmForgotPasswordOutput, error)
+	AdminRespondToAuthChallenge(*cognitoidentityprovider.AdminRespondToAuthChallengeInput) (*cognitoidentityprovider.AdminRespondToAuthChallengeOutput, error)
+	ChangePassword(*cognitoidentityprovider.ChangePasswordInput) (*cognitoidentityprovider.ChangePasswordOutput, error)
+	AdminUserGlobalSignOut(*cognitoidentityprovider.AdminUserGlobalSignOutInput) (*cognitoidentityprovider.AdminUserGlobalSignOutOutput, error)
+	AdminResetUserPassword(input *cognitoidentityprovider.AdminResetUserPasswordInput) (*cognitoidentityprovider.AdminResetUserPasswordOutput, error)
+}
+
 type Adapter struct {
 	poolID       string
 	clientID     string
 	clientSecret string
-	provider     *cognitoidentityprovider.CognitoIdentityProvider
+	provider     provider
 }
 
 func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapter {
@@ -72,19 +83,22 @@ func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapt
 }
 
 func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) error {
-	adminAuthResponse, err := ca.SignIn(username, oldPassword)
+	signInResult, err := ca.SignIn(username, oldPassword)
 	if err != nil {
 		return wrapErrWithCode(err, "error in cognito.Adapter while signing in before changing password", ErrCodeSignIn)
 	}
 
-	switch *adminAuthResponse.ChallengeName {
+	switch *signInResult.ChallengeName {
 	case cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired:
-		_, err := ca.respondToAuthChallenge(username, newPassword, adminAuthResponse.Session)
-		return wrapErrWithCode(err, "error in cognito.Adapter while responding to auth challenge", ErrCodeRespondToAuthChallenge)
+		if _, err := ca.respondToAuthChallenge(username, newPassword, signInResult.Session); err != nil {
+			return wrapErrWithCode(err, "error in cognito.Adapter while responding to auth challenge", ErrCodeRespondToAuthChallenge)
+		}
 	default:
-		_, err := ca.changePassword(oldPassword, newPassword, adminAuthResponse.AuthenticationResult.AccessToken)
-		return wrapErrWithCode(err, "error in cognito.Adapter while changing password", ErrCodeChangePasswordRequest)
+		if _, err := ca.changePassword(oldPassword, newPassword, signInResult.AuthenticationResult.AccessToken); err != nil {
+			return wrapErrWithCode(err, "error in cognito.Adapter while changing password", ErrCodeChangePasswordRequest)
+		}
 	}
+	return nil
 }
 
 func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
@@ -105,7 +119,7 @@ func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 	return result, nil
 }
 
-func (ca *Adapter) CreateUser(username, password string, attributesMap map[string]string, deliveryMedium deliveryMedium,
+func (ca *Adapter) CreateUser(username, password string, attributesMap map[string]string, deliveryMedium DeliveryMedium,
 	createAlias bool) (*CreateUserResult, error) {
 
 	deliveryMediums := make([]*string, 0)
@@ -197,8 +211,8 @@ func (ca *Adapter) ResetUserPassword(username string) error {
 		Username:   &username,
 	}
 
-	request, _ := ca.provider.AdminResetUserPasswordRequest(input)
-	if err := request.Send(); err != nil {
+	_, err := ca.provider.AdminResetUserPassword(input)
+	if err != nil {
 		return wrapErr(err, "error in cognito.Adapter while sending AdminResetUserPasswordRequest")
 	}
 	return nil
@@ -282,14 +296,12 @@ func (ca *Adapter) generateSecretHash(username string) (string, error) {
 func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
 	attributesMap := make(map[string]string)
 	for _, attr := range attrs {
-		if attr.Name != nil {
+		if attr.Name == nil {
 			continue
 		}
-		value := ""
-		if attr.Value == nil {
-			value = *attr.Value
+		if attr.Value != nil {
+			attributesMap[*attr.Name] = *attr.Value
 		}
-		attributesMap[*attr.Name] = value
 	}
 	return attributesMap
 }
