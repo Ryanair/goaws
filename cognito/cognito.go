@@ -1,9 +1,6 @@
 package cognito
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
@@ -83,18 +80,30 @@ func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapt
 }
 
 func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) error {
-	signInResult, err := ca.SignIn(username, oldPassword)
-	if err != nil {
-		return wrapErrWithCode(err, "error in cognito.Adapter while signing in before changing password", ErrCodeSignIn)
+	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
+
+	input := &cognitoidentityprovider.AdminInitiateAuthInput{
+		AuthFlow: &authFlow,
+		AuthParameters: map[string]*string{
+			"USERNAME": &username,
+			"PASSWORD": &oldPassword,
+		},
+		ClientId:   &ca.clientID,
+		UserPoolId: &ca.poolID,
 	}
 
-	switch *signInResult.ChallengeName {
+	output, err := ca.provider.AdminInitiateAuth(input)
+	if err != nil {
+		return wrapErr(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest")
+	}
+
+	switch *output.ChallengeName {
 	case cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired:
-		if _, err := ca.respondToAuthChallenge(username, newPassword, signInResult.Session); err != nil {
+		if _, err := ca.respondToAuthChallenge(username, newPassword, output.Session); err != nil {
 			return wrapErrWithCode(err, "error in cognito.Adapter while responding to auth challenge", ErrCodeRespondToAuthChallenge)
 		}
 	default:
-		if _, err := ca.changePassword(oldPassword, newPassword, signInResult.AuthenticationResult.AccessToken); err != nil {
+		if _, err := ca.changePassword(oldPassword, newPassword, output.AuthenticationResult.AccessToken); err != nil {
 			return wrapErrWithCode(err, "error in cognito.Adapter while changing password", ErrCodeChangePasswordRequest)
 		}
 	}
@@ -154,10 +163,6 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 
 func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 
-	// secretHash, err := ca.generateSecretHash(username)
-	// if err != nil {
-	// 	return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
-	// }
 	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
 
 	input := &cognitoidentityprovider.AdminInitiateAuthInput{
@@ -165,7 +170,6 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 		AuthParameters: map[string]*string{
 			"USERNAME": &username,
 			"PASSWORD": &password,
-			// "SECRET_HASH": &secretHash,
 		},
 		ClientId:   &ca.clientID,
 		UserPoolId: &ca.poolID,
@@ -220,20 +224,14 @@ func (ca *Adapter) ResetUserPassword(username string) error {
 
 func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode string) error {
 
-	secretHash, err := ca.generateSecretHash(username)
-	if err != nil {
-		return wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
-	}
-
 	input := &cognitoidentityprovider.ConfirmForgotPasswordInput{
 		ClientId:         &ca.clientID,
 		ConfirmationCode: &confirmationCode,
 		Password:         &newPassword,
-		SecretHash:       &secretHash,
 		Username:         &username,
 	}
 
-	_, err = ca.provider.ConfirmForgotPassword(input)
+	_, err := ca.provider.ConfirmForgotPassword(input)
 	if err != nil {
 		return wrapErr(err, "error in cognito.Adapter while sending ConfirmForgotPasswordRequest")
 	}
@@ -243,11 +241,6 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 func (ca *Adapter) respondToAuthChallenge(username, password string,
 	session *string) (*cognitoidentityprovider.AdminRespondToAuthChallengeOutput, error) {
 
-	// secretHash, err := ca.generateSecretHash(username)
-	// if err != nil {
-	// 	return nil, wrapErrWithCode(err, "Cannot encode secret hash", ErrSecretHashEncoding)
-	// }
-
 	challengeName := cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired
 
 	input := &cognitoidentityprovider.AdminRespondToAuthChallengeInput{
@@ -255,7 +248,6 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 		ChallengeResponses: map[string]*string{
 			"USERNAME":     &username,
 			"NEW_PASSWORD": &password,
-			// "SECRET_HASH":  &secretHash,
 		},
 		ClientId:   &ca.clientID,
 		UserPoolId: &ca.poolID,
@@ -282,15 +274,6 @@ func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string
 		return nil, wrapErr(err, "error in cognito.Adapter while sending ChangePasswordRequest")
 	}
 	return output, nil
-}
-
-func (ca *Adapter) generateSecretHash(username string) (string, error) {
-	mac := hmac.New(sha256.New, []byte(ca.clientSecret))
-	_, err := mac.Write([]byte(username + ca.clientID))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
 func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
