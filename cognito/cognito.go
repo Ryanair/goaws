@@ -94,7 +94,7 @@ func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) err
 
 	output, err := ca.provider.AdminInitiateAuth(input)
 	if err != nil {
-		return wrapErr(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest")
+		return wrapErrWithCode(err, "error in cognito.Adapter while sending AdminInitiateAuthRequest", ErrCodeSignIn)
 	}
 
 	switch *output.ChallengeName {
