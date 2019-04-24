@@ -61,21 +61,19 @@ type provider interface {
 }
 
 type Adapter struct {
-	poolID       string
-	clientID     string
-	clientSecret string
-	provider     provider
+	poolID   string
+	clientID string
+	provider provider
 }
 
-func NewAdapter(cfg *goaws.Config, poolID, clientID, clientSecret string) *Adapter {
+func NewAdapter(cfg *goaws.Config, poolID, clientID string) *Adapter {
 
 	provider := cognitoidentityprovider.New(cfg.Provider)
 
 	return &Adapter{
-		poolID:       poolID,
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		provider:     provider,
+		poolID:   poolID,
+		clientID: clientID,
+		provider: provider,
 	}
 }
 

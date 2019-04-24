@@ -17,10 +17,9 @@ const (
 
 func NewTestAdapter(provider provider) *Adapter {
 	return &Adapter{
-		poolID:       poolID,
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		provider:     provider,
+		poolID:   poolID,
+		clientID: clientID,
+		provider: provider,
 	}
 }
 
