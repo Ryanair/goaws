@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/Ryanair/goaws"
-	"github.com/Ryanair/goaws/internal"
-
+	"github.com/Ryanair/goaws/docker"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -172,7 +171,7 @@ func containsErr(t *testing.T, origErr, want error) bool {
 }
 
 func TestMain(m *testing.M) {
-	img := internal.DockerImage{
+	img := docker.Image{
 		Repo: "amazon/dynamodb-local",
 		Tag:  "latest",
 		Env:  nil,
@@ -196,5 +195,5 @@ func TestMain(m *testing.M) {
 		return nil
 	}
 
-	internal.DockerSetup(m, img, setup)
+	docker.Setup(m, img, setup)
 }
