@@ -10,9 +10,8 @@ import (
 )
 
 const (
-	poolID       = "abc-def-pool-id"
-	clientID     = "ghi-jklm-client-id"
-	clientSecret = "client-secret"
+	poolID   = "abc-def-pool-id"
+	clientID = "ghi-jklm-client-id"
 )
 
 func NewTestAdapter(provider provider) *Adapter {
