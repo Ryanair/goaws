@@ -54,6 +54,36 @@ func TestClient_GeneratePutURL_signingFailed(t *testing.T) {
 	assert.True(t, isSigningFailed(genErr))
 }
 
+func TestClient_GeneratePutURLWithMetadata_ok(t *testing.T) {
+	// when
+	meta := map[string]*string{"filename": aws.String("HappyFace.jpg")}
+	url, err := cli.GeneratePutURLWithMetadata(bucketID, "some_random_key", "", 30*time.Minute, meta)
+	if err != nil {
+		t.Fatalf("failed to generate url with metada: %s", err)
+	}
+
+	// then
+	assert.NotEmpty(t, url)
+}
+
+func TestClient_GeneratePutURLWithMetadata_signingFailed(t *testing.T) {
+	// when
+	meta := map[string]*string{"filename": aws.String("SadFace.png")}
+	url, genErr := cli.GeneratePutURLWithMetadata(bucketID, "some_random_key", "", -30*time.Minute, meta)
+
+	// then
+	isSigningFailed := func(err error) bool {
+		type signingFailed interface {
+			SigningFailed() bool
+		}
+		e, ok := err.(signingFailed)
+		return ok && e.SigningFailed()
+	}
+
+	assert.Empty(t, url)
+	assert.True(t, isSigningFailed(genErr))
+}
+
 func TestClient_PutObject_ok(t *testing.T) {
 	// given & when
 	putErr := cli.PutObject(bucketID, "some_random_key", bytes.NewReader([]byte("abc")))
