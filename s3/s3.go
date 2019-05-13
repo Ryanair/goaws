@@ -44,6 +44,22 @@ func (c *Client) GeneratePutURL(bucket, key, contentType string, expire time.Dur
 	return url, nil
 }
 
+func (c *Client) GeneratePutURLWithMetadata(bucket, key, contentType string, expire time.Duration, metadata map[string]*string) (string, error) {
+	req, _ := c.s3.PutObjectRequest(&s3.PutObjectInput{
+		Bucket:      &bucket,
+		Key:         &key,
+		ContentType: &contentType,
+		Metadata:    metadata,
+	})
+
+	url, err := req.Presign(expire)
+	if err != nil {
+		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url with metadata failed")
+	}
+
+	return url, nil
+}
+
 func (c *Client) DeleteObject(bucket, key string) error {
 	if _, err := c.s3.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
