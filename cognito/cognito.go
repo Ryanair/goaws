@@ -3,19 +3,21 @@ package cognito
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
+	cip "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 
 	"github.com/Ryanair/goaws"
 )
 
 var (
-	emailDeliveryMethod = cognitoidentityprovider.DeliveryMediumTypeEmail
-	smsDeliveryMethod   = cognitoidentityprovider.DeliveryMediumTypeSms
+	emailDeliveryMethod = cip.DeliveryMediumTypeEmail
+	smsDeliveryMethod   = cip.DeliveryMediumTypeSms
 
 	DeliveryMediumEmpty       = DeliveryMedium([]*string{})
 	DeliveryMediumEmail       = DeliveryMedium([]*string{&emailDeliveryMethod})
 	DeliveryMediumSms         = DeliveryMedium([]*string{&smsDeliveryMethod})
 	DeliveryMediumEmailAndSms = DeliveryMedium([]*string{&emailDeliveryMethod, &smsDeliveryMethod})
+
+	listGroupsDefaultLimit int64 = 1000
 )
 
 type DeliveryMedium []*string
@@ -49,15 +51,31 @@ type GetUserResult struct {
 	Username       *string
 }
 
+type Group struct {
+	CreationDate     *time.Time
+	Description      *string
+	Name             string
+	LastModifiedDate *time.Time
+	Precedence       *int64
+	RoleArn          *string
+	UserPoolId       string
+}
+
+type ListGroupsResult struct {
+	Groups    []Group
+	NextToken *string
+}
+
 type provider interface {
-	GetUser(*cognitoidentityprovider.GetUserInput) (*cognitoidentityprovider.GetUserOutput, error)
-	AdminCreateUser(*cognitoidentityprovider.AdminCreateUserInput) (*cognitoidentityprovider.AdminCreateUserOutput, error)
-	AdminInitiateAuth(*cognitoidentityprovider.AdminInitiateAuthInput) (*cognitoidentityprovider.AdminInitiateAuthOutput, error)
-	ConfirmForgotPassword(*cognitoidentityprovider.ConfirmForgotPasswordInput) (*cognitoidentityprovider.ConfirmForgotPasswordOutput, error)
-	AdminRespondToAuthChallenge(*cognitoidentityprovider.AdminRespondToAuthChallengeInput) (*cognitoidentityprovider.AdminRespondToAuthChallengeOutput, error)
-	ChangePassword(*cognitoidentityprovider.ChangePasswordInput) (*cognitoidentityprovider.ChangePasswordOutput, error)
-	AdminUserGlobalSignOut(*cognitoidentityprovider.AdminUserGlobalSignOutInput) (*cognitoidentityprovider.AdminUserGlobalSignOutOutput, error)
-	AdminResetUserPassword(input *cognitoidentityprovider.AdminResetUserPasswordInput) (*cognitoidentityprovider.AdminResetUserPasswordOutput, error)
+	GetUser(*cip.GetUserInput) (*cip.GetUserOutput, error)
+	AdminCreateUser(*cip.AdminCreateUserInput) (*cip.AdminCreateUserOutput, error)
+	AdminInitiateAuth(*cip.AdminInitiateAuthInput) (*cip.AdminInitiateAuthOutput, error)
+	ConfirmForgotPassword(*cip.ConfirmForgotPasswordInput) (*cip.ConfirmForgotPasswordOutput, error)
+	AdminRespondToAuthChallenge(*cip.AdminRespondToAuthChallengeInput) (*cip.AdminRespondToAuthChallengeOutput, error)
+	ChangePassword(*cip.ChangePasswordInput) (*cip.ChangePasswordOutput, error)
+	AdminUserGlobalSignOut(*cip.AdminUserGlobalSignOutInput) (*cip.AdminUserGlobalSignOutOutput, error)
+	AdminResetUserPassword(input *cip.AdminResetUserPasswordInput) (*cip.AdminResetUserPasswordOutput, error)
+	AdminListGroupsForUser(input *cip.AdminListGroupsForUserInput) (*cip.AdminListGroupsForUserOutput, error)
 }
 
 type Adapter struct {
@@ -68,7 +86,7 @@ type Adapter struct {
 
 func NewAdapter(cfg *goaws.Config, poolID, clientID string) *Adapter {
 
-	provider := cognitoidentityprovider.New(cfg.Provider)
+	provider := cip.New(cfg.Provider)
 
 	return &Adapter{
 		poolID:   poolID,
@@ -78,9 +96,9 @@ func NewAdapter(cfg *goaws.Config, poolID, clientID string) *Adapter {
 }
 
 func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) error {
-	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
+	authFlow := cip.AuthFlowTypeAdminNoSrpAuth
 
-	input := &cognitoidentityprovider.AdminInitiateAuthInput{
+	input := &cip.AdminInitiateAuthInput{
 		AuthFlow: &authFlow,
 		AuthParameters: map[string]*string{
 			"USERNAME": &username,
@@ -96,7 +114,7 @@ func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) err
 	}
 
 	switch *output.ChallengeName {
-	case cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired:
+	case cip.ChallengeNameTypeNewPasswordRequired:
 		if _, err := ca.respondToAuthChallenge(username, newPassword, output.Session); err != nil {
 			return wrapErrWithCode(err, "error in cognito.Adapter while responding to auth challenge", ErrCodeRespondToAuthChallenge)
 		}
@@ -110,7 +128,7 @@ func (ca *Adapter) ChangePassword(username, oldPassword, newPassword string) err
 
 func (ca *Adapter) GetUser(accessToken string) (*GetUserResult, error) {
 
-	getUserInput := &cognitoidentityprovider.GetUserInput{
+	getUserInput := &cip.GetUserInput{
 		AccessToken: &accessToken,
 	}
 
@@ -134,7 +152,7 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 		deliveryMediums = append(deliveryMediums, medium)
 	}
 
-	input := &cognitoidentityprovider.AdminCreateUserInput{
+	input := &cip.AdminCreateUserInput{
 		ForceAliasCreation:     &createAlias,
 		UserAttributes:         toAttributes(attributesMap),
 		DesiredDeliveryMediums: deliveryMediums,
@@ -161,9 +179,9 @@ func (ca *Adapter) CreateUser(username, password string, attributesMap map[strin
 
 func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 
-	authFlow := cognitoidentityprovider.AuthFlowTypeAdminNoSrpAuth
+	authFlow := cip.AuthFlowTypeAdminNoSrpAuth
 
-	input := &cognitoidentityprovider.AdminInitiateAuthInput{
+	input := &cip.AdminInitiateAuthInput{
 		AuthFlow: &authFlow,
 		AuthParameters: map[string]*string{
 			"USERNAME": &username,
@@ -194,7 +212,7 @@ func (ca *Adapter) SignIn(username, password string) (*SignInResult, error) {
 
 func (ca *Adapter) SignOut(username string) error {
 
-	input := &cognitoidentityprovider.AdminUserGlobalSignOutInput{
+	input := &cip.AdminUserGlobalSignOutInput{
 		UserPoolId: &ca.poolID,
 		Username:   &username,
 	}
@@ -208,7 +226,7 @@ func (ca *Adapter) SignOut(username string) error {
 
 func (ca *Adapter) ResetUserPassword(username string) error {
 
-	input := &cognitoidentityprovider.AdminResetUserPasswordInput{
+	input := &cip.AdminResetUserPasswordInput{
 		UserPoolId: &ca.poolID,
 		Username:   &username,
 	}
@@ -222,7 +240,7 @@ func (ca *Adapter) ResetUserPassword(username string) error {
 
 func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode string) error {
 
-	input := &cognitoidentityprovider.ConfirmForgotPasswordInput{
+	input := &cip.ConfirmForgotPasswordInput{
 		ClientId:         &ca.clientID,
 		ConfirmationCode: &confirmationCode,
 		Password:         &newPassword,
@@ -236,12 +254,50 @@ func (ca *Adapter) ConfirmForgotPassword(username, newPassword, confirmationCode
 	return nil
 }
 
+func (ca *Adapter) ListUserGroups(username string, limit *int64, nextToken *string) (*ListGroupsResult, error) {
+
+	if limit == nil {
+		limit = &listGroupsDefaultLimit
+	}
+
+	input := &cip.AdminListGroupsForUserInput{
+		Limit:      limit,
+		NextToken:  nextToken,
+		UserPoolId: &ca.poolID,
+		Username:   &username,
+	}
+
+	output, err := ca.provider.AdminListGroupsForUser(input)
+	if err != nil {
+		return nil, wrapErr(err, "error in cognito.Adapter while sending ConfirmForgotPasswordRequest")
+	}
+
+	groups := make([]Group, 0)
+	for _, cg := range output.Groups {
+		group := Group{
+			CreationDate:     cg.CreationDate,
+			Description:      cg.Description,
+			Name:             *cg.GroupName,
+			LastModifiedDate: cg.LastModifiedDate,
+			Precedence:       cg.Precedence,
+			RoleArn:          cg.RoleArn,
+			UserPoolId:       *cg.UserPoolId,
+		}
+		groups = append(groups, group)
+	}
+
+	return &ListGroupsResult{
+		Groups:    groups,
+		NextToken: output.NextToken,
+	}, nil
+}
+
 func (ca *Adapter) respondToAuthChallenge(username, password string,
-	session *string) (*cognitoidentityprovider.AdminRespondToAuthChallengeOutput, error) {
+	session *string) (*cip.AdminRespondToAuthChallengeOutput, error) {
 
-	challengeName := cognitoidentityprovider.ChallengeNameTypeNewPasswordRequired
+	challengeName := cip.ChallengeNameTypeNewPasswordRequired
 
-	input := &cognitoidentityprovider.AdminRespondToAuthChallengeInput{
+	input := &cip.AdminRespondToAuthChallengeInput{
 		ChallengeName: &challengeName,
 		ChallengeResponses: map[string]*string{
 			"USERNAME":     &username,
@@ -259,9 +315,9 @@ func (ca *Adapter) respondToAuthChallenge(username, password string,
 	return output, nil
 }
 
-func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string) (*cognitoidentityprovider.ChangePasswordOutput, error) {
+func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string) (*cip.ChangePasswordOutput, error) {
 
-	input := &cognitoidentityprovider.ChangePasswordInput{
+	input := &cip.ChangePasswordInput{
 		AccessToken:      token,
 		PreviousPassword: &oldPassword,
 		ProposedPassword: &newPassword,
@@ -274,7 +330,7 @@ func (ca *Adapter) changePassword(oldPassword, newPassword string, token *string
 	return output, nil
 }
 
-func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]string {
+func fromAttributes(attrs []*cip.AttributeType) map[string]string {
 	attributesMap := make(map[string]string)
 	for _, attr := range attrs {
 		if attr.Name == nil {
@@ -287,8 +343,8 @@ func fromAttributes(attrs []*cognitoidentityprovider.AttributeType) map[string]s
 	return attributesMap
 }
 
-func toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.AttributeType {
-	attributes := make([]*cognitoidentityprovider.AttributeType, 0)
+func toAttributes(attributesMap map[string]string) []*cip.AttributeType {
+	attributes := make([]*cip.AttributeType, 0)
 	for attrName, attrValue := range attributesMap {
 		attr := attribute(attrName, attrValue)
 		attributes = append(attributes, attr)
@@ -296,8 +352,8 @@ func toAttributes(attributesMap map[string]string) []*cognitoidentityprovider.At
 	return attributes
 }
 
-func attribute(name, value string) *cognitoidentityprovider.AttributeType {
-	return &cognitoidentityprovider.AttributeType{
+func attribute(name, value string) *cip.AttributeType {
+	return &cip.AttributeType{
 		Name:  &name,
 		Value: &value,
 	}

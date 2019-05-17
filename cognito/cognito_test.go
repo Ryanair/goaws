@@ -51,6 +51,7 @@ func TestAdapter_ChangePassword(t *testing.T) {
 		{errors.New("error in signIn"), "", nil, nil, &errCodeSignIn},
 		{nil, cip.ChallengeNameTypeNewPasswordRequired, errors.New("error in respondToAuthChallenge"), nil, &errCodeRespondToAuthChallenge},
 		{nil, "", nil, errors.New("error in changePassword"), &errCodeChangePasswordRequest},
+		{nil, "", nil, nil, nil},
 	}
 
 	for _, data := range testData {
@@ -305,6 +306,56 @@ func TestAdapter_ConfirmForgotPassword_error(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestAdapter_ListUserGroups_ok(t *testing.T) {
+
+	// given
+	group := "admin"
+	userPool := "abc-def-ghi"
+	nextToken := "abc-def"
+	output := &cip.AdminListGroupsForUserOutput{
+		NextToken: &nextToken,
+		Groups: []*cip.GroupType{
+			&cip.GroupType{
+				GroupName:  &group,
+				UserPoolId: &userPool,
+			},
+		},
+	}
+
+	provider := &providerMock{
+		listGroupsOutput: output,
+	}
+
+	adapter := NewTestAdapter(provider)
+
+	// when
+	result, err := adapter.ListUserGroups("john@test.com", nil, nil)
+
+	// then
+	assert.NoError(t, err)
+	assert.Equal(t, nextToken, *result.NextToken)
+	assert.Equal(t, 1, len(result.Groups))
+	assert.Equal(t, group, result.Groups[0].Name)
+	assert.Equal(t, userPool, result.Groups[0].UserPoolId)
+}
+
+func TestAdapter_ListUserGroups_error(t *testing.T) {
+
+	// given
+	provider := &providerMock{
+		listGroupsErr: errors.New("error while listing groups"),
+	}
+
+	adapter := NewTestAdapter(provider)
+
+	// when
+	result, err := adapter.ListUserGroups("john@test.com", nil, nil)
+
+	// then
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
 func toAwsgoError(t *testing.T, err error) Error {
 	awsgoError, ok := err.(Error)
 	if !ok {
@@ -330,6 +381,8 @@ type providerMock struct {
 	signOutErr                   error
 	resetPassOutput              *cip.AdminResetUserPasswordOutput
 	resetPassErr                 error
+	listGroupsOutput             *cip.AdminListGroupsForUserOutput
+	listGroupsErr                error
 }
 
 func (pm *providerMock) GetUser(*cip.GetUserInput) (*cip.GetUserOutput, error) {
@@ -362,6 +415,10 @@ func (pm *providerMock) AdminUserGlobalSignOut(*cip.AdminUserGlobalSignOutInput)
 
 func (pm *providerMock) AdminResetUserPassword(input *cip.AdminResetUserPasswordInput) (*cip.AdminResetUserPasswordOutput, error) {
 	return pm.resetPassOutput, pm.resetPassErr
+}
+
+func (pm *providerMock) AdminListGroupsForUser(input *cip.AdminListGroupsForUserInput) (*cip.AdminListGroupsForUserOutput, error) {
+	return pm.listGroupsOutput, pm.listGroupsErr
 }
 
 func TestProviderMockImplementsProvider(t *testing.T) {
