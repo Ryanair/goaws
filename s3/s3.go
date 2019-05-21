@@ -29,32 +29,21 @@ func Endpoint(endpoint string) func(*s3.S3) {
 	}
 }
 
-func (c *Client) GeneratePutURL(bucket, key, contentType string, expire time.Duration) (string, error) {
-	req, _ := c.s3.PutObjectRequest(&s3.PutObjectInput{
+func (c *Client) GeneratePutURL(bucket, key, contentType string, expire time.Duration, options ...func(*s3.PutObjectInput)) (string, error) {
+	input := &s3.PutObjectInput{
 		Bucket:      &bucket,
 		Key:         &key,
 		ContentType: &contentType,
-	})
-
-	url, err := req.Presign(expire)
-	if err != nil {
-		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url failed")
+	}
+	for _, opt := range options {
+		opt(input)
 	}
 
-	return url, nil
-}
-
-func (c *Client) GeneratePutURLWithMetadata(bucket, key, contentType string, expire time.Duration, metadata map[string]*string) (string, error) {
-	req, _ := c.s3.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:      &bucket,
-		Key:         &key,
-		ContentType: &contentType,
-		Metadata:    metadata,
-	})
+	req, _ := c.s3.PutObjectRequest(input)
 
 	url, err := req.Presign(expire)
 	if err != nil {
-		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url with metadata failed")
+		return "", wrapErrWithCode(err, "signing url with metadata failed", ErrCodeSigningURL)
 	}
 
 	return url, nil
@@ -83,15 +72,38 @@ func (c *Client) GetObject(bucket, key string) (io.ReadCloser, error) {
 	return out.Body, nil
 }
 
-func (c *Client) PutObject(bucket, key string, body io.ReadSeeker) error {
-	_, err := c.s3.PutObject(&s3.PutObjectInput{
+func (c *Client) PutObject(bucket, key string, body io.ReadSeeker, options ...func(*s3.PutObjectInput)) error {
+	input := &s3.PutObjectInput{
 		Body:   body,
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+	for _, opt := range options {
+		opt(input)
+	}
+
+	_, err := c.s3.PutObject(input)
+	if err != nil {
+		return wrapErr(err, "put object with metadata failed")
+	}
+
+	return nil
+}
+
+func (c *Client) GetObjectMetadata(bucket, key string) (map[string]*string, error) {
+	out, err := c.s3.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return wrapErr(err, "put object failed")
+		return nil, wrapErr(err, "get object metadata failed")
 	}
 
-	return nil
+	return out.Metadata, nil
+}
+
+func Metadata(meta map[string]*string) func(in *s3.PutObjectInput) {
+	return func(in *s3.PutObjectInput) {
+		in.Metadata = meta
+	}
 }
