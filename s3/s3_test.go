@@ -54,10 +54,10 @@ func TestClient_GeneratePutURL_signingFailed(t *testing.T) {
 	assert.True(t, isSigningFailed(genErr))
 }
 
-func TestClient_GeneratePutURLWithMetadata_ok(t *testing.T) {
+func TestClient_GeneratePutURL_withMetadata_ok(t *testing.T) {
 	// when
 	meta := map[string]*string{"filename": aws.String("HappyFace.jpg")}
-	url, err := cli.GeneratePutURLWithMetadata(bucketID, "some_random_key", "", 30*time.Minute, meta)
+	url, err := cli.GeneratePutURL(bucketID, "some_random_key", "", 30*time.Minute, Metadata(meta))
 	if err != nil {
 		t.Fatalf("failed to generate url with metada: %s", err)
 	}
@@ -66,10 +66,10 @@ func TestClient_GeneratePutURLWithMetadata_ok(t *testing.T) {
 	assert.NotEmpty(t, url)
 }
 
-func TestClient_GeneratePutURLWithMetadata_signingFailed(t *testing.T) {
+func TestClient_GeneratePutURL_withMetadata_signingFailed(t *testing.T) {
 	// when
 	meta := map[string]*string{"filename": aws.String("SadFace.png")}
-	url, genErr := cli.GeneratePutURLWithMetadata(bucketID, "some_random_key", "", -30*time.Minute, meta)
+	url, genErr := cli.GeneratePutURL(bucketID, "some_random_key", "", -30*time.Minute, Metadata(meta))
 
 	// then
 	isSigningFailed := func(err error) bool {
@@ -114,12 +114,12 @@ func TestClient_GetObject_keyNotFound(t *testing.T) {
 	assert.True(t, isKeyNotFound(getErr))
 }
 
-func TestClient_PutObjectWithMetadata_ok(t *testing.T) {
+func TestClient_PutObject_withMetadata_ok(t *testing.T) {
 	// given
 	meta := map[string]*string{"Filename": aws.String("HappyFace.jpg")}
 
 	// when
-	putErr := cli.PutObjectWithMetadata(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), meta)
+	putErr := cli.PutObject(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), Metadata(meta))
 
 	// then
 	out, _ := cli.GetObjectMetadata(bucketID, "some_random_key_123")
@@ -131,7 +131,7 @@ func TestClient_PutObjectWithMetadata_ok(t *testing.T) {
 func TestClient_GetObjectMetadata_ok(t *testing.T) {
 	// given
 	meta := map[string]*string{"Filename": aws.String("HappyFace.jpg")}
-	_ = cli.PutObjectWithMetadata(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), meta)
+	_ = cli.PutObject(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), Metadata(meta))
 
 	// when
 	out, getErr := cli.GetObjectMetadata(bucketID, "some_random_key_123")
