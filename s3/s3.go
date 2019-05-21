@@ -38,7 +38,7 @@ func (c *Client) GeneratePutURL(bucket, key, contentType string, expire time.Dur
 
 	url, err := req.Presign(expire)
 	if err != nil {
-		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url failed")
+		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing put url failed")
 	}
 
 	return url, nil
@@ -54,7 +54,7 @@ func (c *Client) GeneratePutURLWithMetadata(bucket, key, contentType string, exp
 
 	url, err := req.Presign(expire)
 	if err != nil {
-		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing url with metadata failed")
+		return "", wrapErrWithCode(err, ErrCodeSigningURL, "signing put url with metadata failed")
 	}
 
 	return url, nil
@@ -94,4 +94,30 @@ func (c *Client) PutObject(bucket, key string, body io.ReadSeeker) error {
 	}
 
 	return nil
+}
+
+func (c *Client) PutObjectWithMetadata(bucket, key string, body io.ReadSeeker, metadata map[string]*string) error {
+	_, err := c.s3.PutObject(&s3.PutObjectInput{
+		Body:     body,
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		Metadata: metadata,
+	})
+	if err != nil {
+		return wrapErr(err, "put object with metadata failed")
+	}
+
+	return nil
+}
+
+func (c *Client) GetObjectMetadata(bucket, key string) (map[string]*string, error) {
+	out, err := c.s3.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, wrapErr(err, "get object metadata failed")
+	}
+
+	return out.Metadata, nil
 }

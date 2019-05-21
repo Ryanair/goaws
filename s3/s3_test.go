@@ -85,7 +85,7 @@ func TestClient_GeneratePutURLWithMetadata_signingFailed(t *testing.T) {
 }
 
 func TestClient_PutObject_ok(t *testing.T) {
-	// given & when
+	// when
 	putErr := cli.PutObject(bucketID, "some_random_key", bytes.NewReader([]byte("abc")))
 
 	// then
@@ -99,7 +99,7 @@ func TestClient_PutObject_ok(t *testing.T) {
 }
 
 func TestClient_GetObject_keyNotFound(t *testing.T) {
-	// given & when
+	// when
 	_, getErr := cli.GetObject(bucketID, "non_existing_key")
 
 	// then
@@ -112,6 +112,33 @@ func TestClient_GetObject_keyNotFound(t *testing.T) {
 	}
 
 	assert.True(t, isKeyNotFound(getErr))
+}
+
+func TestClient_PutObjectWithMetadata_ok(t *testing.T) {
+	// given
+	meta := map[string]*string{"Filename": aws.String("HappyFace.jpg")}
+
+	// when
+	putErr := cli.PutObjectWithMetadata(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), meta)
+
+	// then
+	out, _ := cli.GetObjectMetadata(bucketID, "some_random_key_123")
+	assert.Nil(t, putErr)
+	assert.NotNil(t, out)
+	assert.Equal(t, meta, out)
+}
+
+func TestClient_GetObjectMetadata_ok(t *testing.T) {
+	// given
+	meta := map[string]*string{"Filename": aws.String("HappyFace.jpg")}
+	_ = cli.PutObjectWithMetadata(bucketID, "some_random_key_123", bytes.NewReader([]byte("abc")), meta)
+
+	// when
+	out, getErr := cli.GetObjectMetadata(bucketID, "some_random_key_123")
+
+	// then
+	assert.Nil(t, getErr)
+	assert.Equal(t, meta, out)
 }
 
 func TestMain(m *testing.M) {
