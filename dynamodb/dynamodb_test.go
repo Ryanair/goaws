@@ -4,6 +4,7 @@ package dynamodb
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Ryanair/goaws"
 	"github.com/Ryanair/goaws/docker"
@@ -140,6 +141,33 @@ func TestDynamoDBClient_Get_itemNotExists(t *testing.T) {
 
 	// then
 	assert.False(t, ok)
+	assert.Nil(t, err)
+}
+
+func TestDynamoDBClient_Update(t *testing.T) {
+	// given
+	id := xid.New().String()
+	item := TestStruct{
+		ID:     id,
+		Artist: "ABBA",
+	}
+	if err := cli.Put(item, tableName); err != nil {
+		t.Fatalf("test %s failed due to %v", t.Name(), err)
+	}
+	key := NewPartitionKey("id", id)
+
+	// when
+	expr := NewExpression(UpdateExpression(expression.Set(expression.Name("Artist"), expression.Value("abababa"))))
+	op := NewUpdateOp(key, expr, tableName)
+	err := cli.Update(&op)
+
+	// then
+	time.Sleep(1000 * time.Millisecond)
+	out := &TestStruct{}
+	ok, _ := cli.Get(key, true, tableName, out)
+	
+	assert.Equal(t, "abababa", out.Artist)
+	assert.True(t, ok)
 	assert.Nil(t, err)
 }
 

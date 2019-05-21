@@ -120,6 +120,12 @@ func (c *Client) Get(key Key, consistentRead bool, tableName string, out interfa
 	return true, nil
 }
 
+func (c *Client) Update(op *UpdateOp) error {
+	input := op.build()
+	_, err := c.db.UpdateItem(&input)
+	return err
+}
+
 func marshalItem(item interface{}) (map[string]*dynamodb.AttributeValue, error) {
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
